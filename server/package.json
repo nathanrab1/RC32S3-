@@ -1,0 +1,12 @@
+{
+  "name": "rc32s3-gravador",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Gravador local do RC32S3: compila e grava o código na ESP32-S3 usando o arduino-cli.",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "setup": "node setup.js",
+    "start": "node server.js"
+  }
+}

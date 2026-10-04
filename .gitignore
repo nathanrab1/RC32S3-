@@ -1,0 +1,5 @@
+node_modules/
+web/dist/
+web/generated/
+server/bin/
+.DS_Store

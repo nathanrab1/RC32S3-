@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RC32S3</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🚗 <span>RC32S3</span></div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="tx" role="tab">🎮 Controle</button>
+      <button class="tab" data-tab="rx" role="tab">🚗 Carrinho</button>
+    </nav>
+
+    <div class="actions">
+      <div class="menu">
+        <button class="btn ghost" id="btn-menu">📁 Projeto ▾</button>
+        <div class="menu-list" id="menu-list" hidden>
+          <button data-action="new">🆕 Novo projeto</button>
+          <button data-action="open">📂 Abrir…</button>
+          <button data-action="save">💾 Salvar</button>
+          <hr />
+          <button data-action="release">⏹ Liberar portas USB (fecha toda comunicação serial)</button>
+          <button data-action="download">⬇️ Baixar código desta aba (.ino)</button>
+          <button data-action="help">❓ Como instalar o gravador</button>
+        </div>
+      </div>
+
+      <div class="port">
+        <select id="port-select" title="Porta USB da placa"><option value="">— placa —</option></select>
+        <button class="btn ghost icon" id="btn-refresh" title="Procurar placas">🔄</button>
+      </div>
+      <button class="btn" id="btn-monitor" title="Ver o que as placas escrevem no Monitor Serial">🖥️ Monitor</button>
+      <button class="btn" id="btn-verify" title="Só compila, sem gravar">✔️ Verificar</button>
+      <button class="btn primary" id="btn-upload">⬆️ Gravar no <span id="upload-target">Controle</span></button>
+      <span class="status" id="server-status" title="Gravador local">● gravador</span>
+    </div>
+  </header>
+
+  <main class="workspaces">
+    <div class="ws active" id="ws-tx"></div>
+    <div class="ws" id="ws-rx"></div>
+  </main>
+
+  <section class="monitor" id="monitor" hidden>
+    <div class="monitor-bar">
+      <span>🖥️ Monitor Serial</span>
+      <button class="btn" id="btn-release" title="Fecha toda comunicação serial com as placas (inclusive de outros programas)">⏹ Fechar todas as portas</button>
+    </div>
+    <div class="monitor-cols" id="monitor-cols"></div>
+  </section>
+
+  <section class="log" id="log" data-state="closed">
+    <header class="log-head">
+      <button class="log-toggle" id="log-toggle">▲ Mensagens</button>
+      <span class="log-summary" id="log-summary"></span>
+    </header>
+    <pre id="log-body"></pre>
+  </section>
+
+  <dialog id="help">
+    <h2>Instalar o gravador</h2>
+    <p>O gravador é um pequeno programa que roda no seu computador e envia o código para a placa pela USB.
+       Ele só precisa ser instalado uma vez.</p>
+    <ol>
+      <li>Instale o <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> (versão 18 ou mais nova).</li>
+      <li>Baixe a pasta do projeto e abra um terminal dentro da pasta <code>server</code>.</li>
+      <li>Rode <code>npm run setup</code> (instala o arduino-cli e o suporte ao ESP32 — demora alguns minutos).</li>
+      <li>Rode <code>npm start</code> e deixe o terminal aberto.</li>
+    </ol>
+    <p>Quando o indicador no canto ficar <b class="ok">● verde</b>, é só ligar a placa na USB e clicar em <b>Gravar</b>.</p>
+    <p class="hint">Use o Google Chrome ou o Edge. Se o navegador perguntar se o site pode acessar a rede local, clique em <b>Permitir</b>.</p>
+    <p class="hint">Se a placa não aparecer: segure o botão <b>BOOT</b>, aperte e solte <b>RESET</b>, e solte o BOOT.</p>
+    <form method="dialog"><button class="btn primary">Entendi</button></form>
+  </dialog>
+
+  <input type="file" id="file-input" accept=".json,.rc.json" hidden />
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "rc32s3",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node scripts/test-all-blocks.mjs generated && node scripts/generate-examples.mjs generated"
+  },
+  "dependencies": {
+    "blockly": "^13.3.0"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "vite": "^8.3.2"
+  }
+}
