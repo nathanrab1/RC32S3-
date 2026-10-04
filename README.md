@@ -49,16 +49,16 @@ O indicador no canto superior direito fica **● verde** quando o gravador está
 2. Clique em **⬆️ Gravar** em cada lado.
 3. Os dois programas precisam usar o **mesmo número de rede** no bloco "ligar rádio na rede".
 
-## Programa inicial: "olá mundo" do rádio
+## Programa inicial
 
-O projeto novo já vem com um teste que **não precisa de nada ligado nos pinos**:
+O projeto novo já vem com um teste de rádio que **só precisa de um servo no Carrinho** (GPIO 3):
 
-- **Controle:** envia a mensagem `farol` (valor 1), pisca o LED da placa em amarelo por 50 ms e espera
-  300 ms. Ou seja, uma mensagem a cada ~350 ms.
-- **Carrinho:** a cada `farol` recebida, soma 1 na variável `cont`, mostra `cont` no Monitor Serial e
-  pisca o LED da placa em branco por 50 ms.
+- **Controle:** envia o canal 1 com valor 1, espera 2 s, envia 0, espera 2 s, e repete. Mostra cada
+  valor no Monitor Serial.
+- **Carrinho:** a cada canal 1 recebido, mostra o valor no monitor e move o servo de direção: valor 0
+  vai para 0°, qualquer outro valor vai para 180°.
 
-Se os dois LEDs piscam juntos, o rádio Long Range está funcionando. Para voltar a esse programa,
+Se o servo vai e volta a cada 2 s, o rádio Long Range está funcionando. Para voltar a esse programa,
 use **☰ → Novo projeto**. Ele fica em `web/src/default-project.rc32s3.json`: para trocar o projeto
 inicial, baixe um projeto pelo app (💾 Baixar) e substitua esse arquivo.
 

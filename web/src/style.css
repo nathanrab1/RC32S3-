@@ -127,8 +127,69 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(280px, 23vw, 360px) minmax(0, 1fr);
+  /* Controle | alça | Blocos | alça | Carrinho. As alças definem --tx-w e
+     --pal-w; sem elas, Controle e Carrinho dividem o espaço igualmente. */
+  grid-template-columns:
+    var(--tx-w, minmax(0, 1fr)) 8px var(--pal-w, clamp(280px, 23vw, 360px)) 8px minmax(0, 1fr);
 }
+
+.col-handle {
+  position: relative;
+  cursor: ew-resize;
+  background: var(--border);
+  touch-action: none;
+}
+.col-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 4px;
+  height: 44px;
+  margin-top: -22px;
+  border-radius: 2px;
+  background: #94a3b8;
+}
+.col-handle:hover,
+.col-handle.dragging { background: color-mix(in srgb, var(--accent) 25%, var(--border)); }
+.col-handle:hover::before,
+.col-handle.dragging::before { background: var(--accent); height: 72px; margin-top: -36px; }
+body.resizing-cols, body.resizing-cols * { cursor: ew-resize !important; user-select: none; }
+
+/* Esconder um lado: ele vira uma faixa fina e o outro lado ganha o espaço. */
+.side-hide { font-size: 16px; line-height: 1; }
+.side-rail {
+  display: none;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 12px 0;
+  writing-mode: vertical-rl;
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  background: var(--panel);
+  border: 0;
+  border-top: 3px solid var(--side-color);
+  cursor: pointer;
+}
+.side-rail:hover { background: color-mix(in srgb, var(--side-color) 12%, var(--panel)); }
+.studio[data-hide="tx"] {
+  grid-template-columns: 40px 0 var(--pal-w, clamp(280px, 23vw, 360px)) 8px minmax(0, 1fr);
+}
+.studio[data-hide="rx"] {
+  grid-template-columns: minmax(0, 1fr) 8px var(--pal-w, clamp(280px, 23vw, 360px)) 0 40px;
+}
+/* A alça vizinha continua na grade (coluna de 0 px), só invisível: com
+   display:none as colunas seguintes "andariam" uma posição. */
+.studio[data-hide="tx"] .col-handle[data-col="left"],
+.studio[data-hide="rx"] .col-handle[data-col="right"] { visibility: hidden; pointer-events: none; }
+.studio[data-hide="tx"] .side[data-role="tx"] > :not(.side-rail),
+.studio[data-hide="rx"] .side[data-role="rx"] > :not(.side-rail) { display: none; }
+.studio[data-hide="tx"] .side-rail[data-role="tx"],
+.studio[data-hide="rx"] .side-rail[data-role="rx"] { display: flex; }
 
 .side { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .side-head {
@@ -251,12 +312,38 @@ body.palette-dragging, body.palette-dragging * { cursor: grabbing !important; }
 }
 .toast[hidden] { display: none; }
 
+/* ---------------------------------------------------------------- Alça para mudar a altura dos painéis de baixo */
+.resize-handle {
+  position: relative;
+  height: 8px;
+  margin-bottom: -4px;
+  z-index: 5;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 44px;
+  height: 4px;
+  margin-left: -22px;
+  border-radius: 2px;
+  background: #475569;
+}
+.resize-handle:hover::before,
+.resize-handle.dragging::before { background: var(--accent); width: 72px; margin-left: -36px; }
+body.resizing, body.resizing * { cursor: ns-resize !important; user-select: none; }
+.log[data-state="closed"] .resize-handle { display: none; }
+
 .log {
   background: var(--log-bg);
   color: var(--log-text);
   border-top: 1px solid var(--border);
 }
-.log-head { display: flex; align-items: center; gap: 12px; padding: 4px 12px; }
+.log-head { display: flex; align-items: center; gap: 12px; padding: 4px 12px; cursor: pointer; user-select: none; }
+.log-head:hover { background: #1e293b; }
 .log-toggle {
   font: inherit;
   font-size: 13px;
@@ -379,6 +466,12 @@ dialog form { text-align: right; margin-top: 16px; }
   body { overflow: auto; }
   .studio { grid-template-columns: 1fr; grid-template-rows: 300px 70vh 70vh; }
   .palette { order: -1; border: 0; border-bottom: 1px solid var(--border); }
+  .col-handle { display: none; }
+  /* Em tela estreita os lados ficam empilhados: nada de esconder. */
+  .studio[data-hide] { grid-template-columns: 1fr; }
+  .studio[data-hide] .side > :not(.side-rail) { display: flex !important; }
+  .studio[data-hide] .side > .ws { display: block !important; }
+  .side-rail, .side-hide { display: none !important; }
 }
 
 @media (max-width: 760px) {

@@ -434,33 +434,78 @@ void RCMotor::applyFailsafe() { writeUs(neutralUs()); }
 
 // ---------------------------------------------------------------- Entradas
 
-struct JoyCal { uint8_t pin; int center; };
-static JoyCal g_joy[10];
-static uint8_t g_joyCount = 0;
+// Calibração automática das entradas analógicas. Muitos potenciômetros e
+// joysticks não chegam aos extremos do ADC (ex.: param em ~64%), então cada
+// pino aprende o menor e o maior valor que já leu e usa essa faixa como
+// 0..100 (ou -100..100). Basta mover de ponta a ponta uma vez depois de ligar.
+// Enquanto a faixa aprendida for pequena, usa a escala completa do ADC.
+static const int ADC_MAX = 4095;
+static const int MIN_SPAN = 300;  // ~7% do ADC: abaixo disso ainda não aprendeu
+static const float END_ZONE = 5;  // % cortado em cada ponta
 
-static int joystickCenter(uint8_t pin) {
-  for (uint8_t i = 0; i < g_joyCount; i++) if (g_joy[i].pin == pin) return g_joy[i].center;
-  // Primeira leitura: média de 16 amostras vira o centro (não mexa no
-  // joystick ao ligar).
-  long sum = 0;
-  for (int i = 0; i < 16; i++) sum += analogRead(pin);
-  int center = sum / 16;
-  if (g_joyCount < 10) g_joy[g_joyCount++] = {pin, center};
-  return center;
+// 0..100 com os 5% de cada ponta cortados: até 5 vira 0, a partir de 95 vira
+// 100, e o meio é esticado (sem salto ao sair da ponta).
+static float cutEnds(float v) {
+  return constrain((v - END_ZONE) * 100.0f / (100.0f - 2 * END_ZONE), 0.0f, 100.0f);
+}
+
+struct AnalogCal {
+  uint8_t pin;
+  int center;  // joystick: posição de repouso (-1 = ainda não medida)
+  int lo, hi;  // menor e maior leitura já vistas
+};
+static AnalogCal g_cal[10];
+static uint8_t g_calCount = 0;
+
+static AnalogCal &calFor(uint8_t pin) {
+  for (uint8_t i = 0; i < g_calCount; i++) if (g_cal[i].pin == pin) return g_cal[i];
+  if (g_calCount >= 10) g_calCount = 9;  // limite: reaproveita o último
+  g_cal[g_calCount] = {pin, -1, ADC_MAX, 0};
+  return g_cal[g_calCount++];
+}
+
+static int readAndLearn(AnalogCal &c) {
+  int raw = analogRead(c.pin);
+  if (raw < c.lo) c.lo = raw;
+  if (raw > c.hi) c.hi = raw;
+  return raw;
 }
 
 float rcJoystick(uint8_t pin, bool inverted) {
-  int center = joystickCenter(pin);
-  int raw = analogRead(pin);
+  AnalogCal &c = calFor(pin);
+  if (c.center < 0) {
+    // Primeira leitura: média de 16 amostras vira o centro (não mexa no
+    // joystick ao ligar).
+    long sum = 0;
+    for (int i = 0; i < 16; i++) sum += analogRead(pin);
+    c.center = sum / 16;
+  }
+  int raw = readAndLearn(c);
   float v;
-  if (raw >= center) v = (raw - center) * 100.0f / max(1, 4095 - center);
-  else v = (raw - center) * 100.0f / max(1, center);
-  if (fabsf(v) < 5) v = 0;  // zona morta
+  if (raw >= c.center) {
+    int top = (c.hi - c.center >= MIN_SPAN) ? c.hi : ADC_MAX;
+    v = (raw - c.center) * 100.0f / max(1, top - c.center);
+  } else {
+    int bottom = (c.center - c.lo >= MIN_SPAN) ? c.lo : 0;
+    v = (raw - c.center) * 100.0f / max(1, c.center - bottom);
+  }
+  // Zona morta de 5% no centro e corte de 5% nas pontas.
   v = constrain(v, -100.0f, 100.0f);
-  return inverted ? -v : v;
+  v = v >= 0 ? cutEnds(v) : -cutEnds(-v);
+  if (inverted) v = -v;
+  return v == 0 ? 0.0f : v;  // evita "-0.00" no monitor
 }
 
-float rcPot(uint8_t pin) { return analogRead(pin) * 100.0f / 4095.0f; }
+float rcPot(uint8_t pin) {
+  AnalogCal &c = calFor(pin);
+  int raw = readAndLearn(c);
+  int lo = 0, hi = ADC_MAX;
+  if (c.hi - c.lo >= MIN_SPAN) {
+    lo = c.lo;
+    hi = c.hi;
+  }
+  return cutEnds((raw - lo) * 100.0f / (hi - lo));
+}
 
 static uint32_t g_pullupPins = 0;
 
@@ -510,6 +555,23 @@ void rcSerialBegin(unsigned long baud) {
   // texto sem leitor é descartado na hora.
   Serial.setTxTimeoutMs(0);
 #endif
+}
+
+// ---------------------------------------------------------------- Texto
+
+String rcStr(const char *s) { return String(s); }
+String rcStr(const String &s) { return s; }
+String rcStr(bool b) { return b ? "verdadeiro" : "falso"; }
+
+String rcStr(double v) {
+  if (isnan(v)) return "?";
+  // Inteiro: sem casas decimais (1125, não 1125.00).
+  if (fabs(v) < 1e9 && v == (double)(long)v) return String((long)v);
+  // Até 3 casas, sem zeros sobrando no fim (3.5, não 3.500).
+  String s(v, 3);
+  while (s.endsWith("0")) s.remove(s.length() - 1);
+  if (s.endsWith(".")) s.remove(s.length() - 1);
+  return s;
 }
 
 // ---------------------------------------------------------------- Tempo

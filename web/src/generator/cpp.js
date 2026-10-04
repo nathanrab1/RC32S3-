@@ -224,7 +224,20 @@ g['rc_map'] = (b, gen) => {
 };
 
 // ------------------------------------------------------------------ Monitor
-g['rc_print'] = (b, gen) => `Serial.println(${gen.value_(b, 'VALUE', Order.NONE, '""')});\n`;
+// rcStr(): números inteiros sem ".00", verdadeiro/falso em português.
+g['rc_print'] = (b, gen) => `Serial.println(rcStr(${gen.value_(b, 'VALUE', Order.NONE, '""')}));\n`;
+
+// "juntar" (rc_join, em uma linha) e o text_join do Blockly (projetos antigos).
+g['rc_join'] = (b, gen) => g['text_join'](b, gen);
+g['text_join'] = (b, gen) => {
+  const parts = [];
+  for (let i = 0; b.getInput('ADD' + i); i++) {
+    const v = gen.valueToCode(b, 'ADD' + i, Order.NONE);
+    if (v) parts.push(`rcStr(${v})`);
+  }
+  if (!parts.length) return ['String("")', Order.UNARY_POSTFIX];
+  return [parts.join(' + '), parts.length > 1 ? Order.ADDITIVE : Order.UNARY_POSTFIX];
+};
 
 // ------------------------------------------------------------------ Blocos padrão do Blockly
 g['text'] = (b, gen) => [gen.quote_(b.getFieldValue('TEXT')), Order.ATOMIC];

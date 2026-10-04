@@ -161,7 +161,7 @@ const definitions = [
     ],
     output: 'Number',
     colour: COLORS.controle,
-    tooltip: 'Posição de -100 a 100. O centro é medido quando a placa liga: não mexa no joystick nessa hora!',
+    tooltip: 'Posição de -100 a 100. O centro é medido quando a placa liga (não mexa no joystick nessa hora). Depois, mova até as pontas uma vez para ele aprender o curso do seu joystick.',
   },
   {
     type: 'rc_pot',
@@ -169,7 +169,7 @@ const definitions = [
     args0: [pin('PIN', true)],
     output: 'Number',
     colour: COLORS.controle,
-    tooltip: 'Valor de 0 a 100.',
+    tooltip: 'Valor de 0 a 100. Depois de ligar, gire de ponta a ponta uma vez para ele aprender o seu potenciômetro.',
   },
   {
     type: 'rc_button',
@@ -336,6 +336,94 @@ export function receivingEvent(block) {
   return parent;
 }
 
+// ------------------------------------------------------------------ "juntar" em uma linha
+
+const BUTTON_SVG = (sign) =>
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#fff" fill-opacity=".9"/>` +
+      `<path d="M5.5 10h9${sign === '+' ? 'M10 5.5v9' : ''}" stroke="#2f7d62" stroke-width="2.6" stroke-linecap="round"/></svg>`,
+  );
+
+// Junta textos e números numa linha só. Os pedaços ficam lado a lado e os
+// botões ➕/➖ no fim acrescentam/tiram pedaços à direita.
+const RC_JOIN = {
+  init() {
+    this.itemCount = 2;
+    this.setStyle('text_blocks');
+    this.setOutput(true, 'String');
+    this.setInputsInline(true);
+    this.setTooltip('Junta textos e números numa linha só. ➕ acrescenta um pedaço, ➖ tira o último.');
+    this.appendDummyInput('TITLE').appendField('juntar');
+    this.updateShape_();
+  },
+
+  saveExtraState() {
+    return { itemCount: this.itemCount };
+  },
+
+  loadExtraState(state) {
+    this.itemCount = Math.max(1, Number(state?.itemCount) || 1);
+    this.updateShape_();
+  },
+
+  // Cria/remove as entradas ADD0..ADDn-1 e põe os botões no fim. Cada pedaço
+  // novo já vem com um texto vazio para digitar (sem entrar no histórico:
+  // quem desfaz/refaz é o evento de "mutation").
+  updateShape_() {
+    if (this.getInput('BUTTONS')) this.removeInput('BUTTONS');
+    for (let i = 0; i < this.itemCount; i++) {
+      if (this.getInput('ADD' + i)) continue;
+      const input = this.appendValueInput('ADD' + i);
+      Blockly.Events.disable();
+      try {
+        input.connection.setShadowState({ type: 'text', fields: { TEXT: '' } });
+      } finally {
+        Blockly.Events.enable();
+      }
+    }
+    for (let i = this.itemCount; this.getInput('ADD' + i); i++) {
+      const input = this.getInput('ADD' + i);
+      const target = input.connection.targetBlock();
+      if (target && !target.isShadow()) target.unplug(); // não perde o bloco do aluno
+      Blockly.Events.disable();
+      try {
+        input.connection.setShadowState(null);
+        this.removeInput('ADD' + i);
+      } finally {
+        Blockly.Events.enable();
+      }
+    }
+    const buttons = this.appendDummyInput('BUTTONS');
+    if (this.itemCount > 1) {
+      buttons.appendField(new Blockly.FieldImage(BUTTON_SVG('-'), 18, 18, '−', (f) => f.getSourceBlock().resize_(-1)));
+    }
+    buttons.appendField(new Blockly.FieldImage(BUTTON_SVG('+'), 18, 18, '+', (f) => f.getSourceBlock().resize_(+1)));
+  },
+
+  resize_(delta) {
+    const next = this.itemCount + delta;
+    if (next < 1) return;
+    Blockly.Events.setGroup(true);
+    try {
+      if (delta < 0) {
+        // Bloco do aluno no último pedaço sai antes (e volta ao desfazer).
+        const target = this.getInput('ADD' + (next))?.connection.targetBlock();
+        if (target && !target.isShadow()) {
+          target.unplug();
+          target.bumpNeighbours?.();
+        }
+      }
+      const before = JSON.stringify(this.saveExtraState());
+      this.itemCount = next;
+      Blockly.Events.fire(new Blockly.Events.BlockChange(this, 'mutation', null, before, JSON.stringify(this.saveExtraState())));
+      this.updateShape_();
+    } finally {
+      Blockly.Events.setGroup(false);
+    }
+  },
+};
+
 // Nomes de mensagem: até 15 caracteres, sem aspas nem barra invertida.
 function messageNameValidator(text) {
   const clean = text.replace(/["\\]/g, '').slice(0, 15);
@@ -344,6 +432,25 @@ function messageNameValidator(text) {
 
 export function registerBlocks() {
   Blockly.common.defineBlocksWithJsonArray(definitions);
+  Blockly.Blocks['rc_join'] = RC_JOIN;
+
+  // Bloco "juntar" (text_join do Blockly) com nomes mais simples.
+  Object.assign(Blockly.Msg, {
+    TEXT_JOIN_TITLE_CREATEWITH: 'juntar',
+    TEXT_CREATE_JOIN_TITLE_JOIN: 'juntar',
+    TEXT_CREATE_JOIN_ITEM_TITLE_ITEM: 'pedaço',
+    TEXT_JOIN_TOOLTIP: 'Junta textos e números numa linha só. Use a engrenagem ⚙️ para ter mais pedaços.',
+  });
+
+  // As variáveis guardam números: texto (como o do "juntar") não encaixa nelas.
+  for (const [type, input] of [['variables_set', 'VALUE'], ['math_change', 'DELTA']]) {
+    const block = Blockly.Blocks[type];
+    const init = block.init;
+    block.init = function () {
+      init.call(this);
+      this.getInput(input).setCheck(['Number', 'Boolean']);
+    };
+  }
 
   // Chapéus (início de programa/eventos) ganham o topo arredondado.
   for (const def of definitions.filter((d) => d.message1 === '%1')) {

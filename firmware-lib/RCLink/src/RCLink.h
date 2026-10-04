@@ -159,12 +159,24 @@ extern RCLinkClass RCLink;
 
 // ---------------------------------------------------------------- Ajudantes
 
-float rcJoystick(uint8_t pin, bool inverted = false); // -100..100, centro calibrado
-float rcPot(uint8_t pin);                             // 0..100
+float rcJoystick(uint8_t pin, bool inverted = false); // -100..100, centro e pontas calibrados
+float rcPot(uint8_t pin);                             // 0..100, pontas calibradas sozinhas
 bool  rcButton(uint8_t pin);                          // true = apertado (ligado ao GND)
 void  rcLed(uint8_t pin, bool on);
 void  rcLedToggle(uint8_t pin);
 void  rcBoardLed(uint8_t r, uint8_t g, uint8_t b);
 void  rcWait(uint32_t ms);                            // espera sem travar o rádio
 void  rcSerialBegin(unsigned long baud = 115200);     // Serial que não trava sem Monitor aberto
+
+// Texto para o Monitor (bloco "juntar"): números inteiros sem ".00",
+// verdadeiro/falso em português.
+String rcStr(const char *s);
+String rcStr(const String &s);
+String rcStr(bool b);
+String rcStr(double v);
+inline String rcStr(float v) { return rcStr((double)v); }
+inline String rcStr(int v) { return String(v); }
+inline String rcStr(long v) { return String(v); }
+inline String rcStr(unsigned int v) { return String(v); }
+inline String rcStr(unsigned long v) { return String(v); }
 float rcMap(float x, float inMin, float inMax, float outMin, float outMax);

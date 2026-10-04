@@ -59,6 +59,11 @@ for (const [name, toolbox] of [['TX', toolboxTx], ['RX', toolboxRx]]) {
       attach(rep);
     } else if (block.previousConnection) {
       attach(block);
+    } else if (block.outputConnection?.getCheck()?.includes('String')) {
+      // Texto vai para o "mostrar no monitor" (variáveis só guardam números).
+      const print = ws.newBlock('rc_print');
+      print.getInput('VALUE').connection.connect(block.outputConnection);
+      attach(print);
     } else if (block.outputConnection) {
       const set = ws.newBlock('variables_set');
       set.setFieldValue(v.getId(), 'VAR');
@@ -88,7 +93,21 @@ for (const [name, toolbox] of [['TX', toolboxTx], ['RX', toolboxRx]]) {
 
   const dir = path.join(out, `Todos_${name}`);
   mkdirSync(dir, { recursive: true });
+  // Variável não aceita texto (daria erro ao compilar).
+  const setTest = ws.newBlock('variables_set');
+  const textBlock = ws.newBlock('text');
+  if (ws.connectionChecker.canConnect(setTest.getInput('VALUE').connection, textBlock.outputConnection, false)) {
+    console.error('✖ "definir variável" aceitou um texto');
+    failures++;
+  }
+  setTest.dispose();
+  textBlock.dispose();
+
   const code = cpp.sketch(ws);
+  if (!code.includes('Serial.println(rcStr(rcStr("valor: ") + rcStr(0)));')) {
+    console.error(`✖ bloco "juntar" não gerou o código esperado em ${name}`);
+    failures++;
+  }
   writeFileSync(path.join(dir, `Todos_${name}.ino`), code);
   if (name === 'RX') {
     const ok = /RCLink\.onChannel\(3, canal_3\);/.test(code) && /void canal_3\(float valorRecebido\) \{\n  velocidade = valorRecebido;/.test(code);

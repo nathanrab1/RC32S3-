@@ -152,7 +152,209 @@ const log = {
     s.className = 'log-summary ' + (kind || '');
   },
 };
-$('log-toggle').addEventListener('click', () => {
+// Alças verticais entre as colunas: Controle | Blocos | Carrinho.
+// - esquerda: Controle e Blocos trocam largura (Carrinho fica igual);
+// - direita: Blocos e Carrinho trocam largura (Controle fica igual).
+// As larguras ficam guardadas; dois cliques voltam ao padrão.
+function initColumnHandles() {
+  const studio = document.querySelector('.studio');
+  const txEl = document.querySelector('.side[data-role="tx"]');
+  const palEl = document.querySelector('.palette');
+  const KEY = 'rc.colunas';
+  const MIN_SIDE = 240;
+  const MIN_PAL = 220;
+  let widths = null; // { tx?, pal } em px (tx ausente = Controle e Carrinho iguais)
+
+  const available = () => studio.clientWidth - 16; // menos as duas alças
+  const apply = () => {
+    if (!widths) {
+      studio.style.removeProperty('--tx-w');
+      studio.style.removeProperty('--pal-w');
+      return;
+    }
+    // Cabe na janela atual?
+    const total = available();
+    widths.pal = Math.max(MIN_PAL, Math.min(widths.pal, total - 2 * MIN_SIDE));
+    studio.style.setProperty('--pal-w', `${Math.round(widths.pal)}px`);
+    if (widths.tx) {
+      widths.tx = Math.max(MIN_SIDE, Math.min(widths.tx, total - widths.pal - MIN_SIDE));
+      studio.style.setProperty('--tx-w', `${Math.round(widths.tx)}px`);
+    } else {
+      studio.style.removeProperty('--tx-w');
+    }
+  };
+  const save = () => {
+    try {
+      if (widths) localStorage.setItem(KEY, JSON.stringify(widths));
+      else localStorage.removeItem(KEY);
+    } catch {
+      /* sem armazenamento: só não lembra */
+    }
+  };
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY));
+    if (saved?.pal) widths = saved;
+  } catch {
+    /* usa o padrão */
+  }
+  apply();
+
+  for (const handle of $$('.col-handle')) {
+    handle.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      const startX = e.clientX;
+      const start = { tx: txEl.getBoundingClientRect().width, pal: palEl.getBoundingClientRect().width };
+      const left = handle.dataset.col === 'left';
+      let frame = 0;
+      handle.classList.add('dragging');
+      document.body.classList.add('resizing-cols');
+
+      const move = (ev) => {
+        const total = available();
+        const dx = ev.clientX - startX;
+        const hidden = studio.dataset.hide;
+        if (hidden) {
+          // Com um lado escondido, a alça que sobra só muda a paleta; a
+          // largura guardada do lado escondido continua a mesma.
+          const pal = Math.max(MIN_PAL, Math.min(start.pal + (left ? -dx : dx), total - MIN_SIDE - 40));
+          widths = { ...widths, pal };
+        } else if (left) {
+          const tx = Math.max(MIN_SIDE, Math.min(start.tx + dx, start.tx + start.pal - MIN_PAL));
+          widths = { tx, pal: start.tx + start.pal - tx };
+        } else {
+          const pal = Math.max(MIN_PAL, Math.min(start.pal + dx, total - start.tx - MIN_SIDE));
+          widths = { tx: start.tx, pal };
+        }
+        apply();
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(resizeAll);
+      };
+      const up = () => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', up);
+        handle.removeEventListener('pointercancel', up);
+        handle.classList.remove('dragging');
+        document.body.classList.remove('resizing-cols');
+        resizeAll();
+        save();
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up);
+      handle.addEventListener('pointercancel', up);
+    });
+
+    handle.addEventListener('dblclick', () => {
+      widths = null;
+      apply();
+      save();
+      resizeAll();
+    });
+  }
+
+  window.addEventListener('resize', () => {
+    if (!widths) return;
+    apply();
+    resizeAll(); // de novo: o resizeAll normal rodou antes deste ajuste
+  });
+}
+initColumnHandles();
+
+// Esconder o Controle ou o Carrinho (um de cada vez). O estado fica guardado.
+function initSideHiding() {
+  const studio = document.querySelector('.studio');
+  const KEY = 'rc.lado-escondido';
+  const set = (role) => {
+    if (role) studio.dataset.hide = role;
+    else delete studio.dataset.hide;
+    try {
+      if (role) localStorage.setItem(KEY, role);
+      else localStorage.removeItem(KEY);
+    } catch {
+      /* sem armazenamento: só não lembra */
+    }
+    resizeAll();
+  };
+  for (const b of $$('.side-hide')) b.addEventListener('click', () => set(b.dataset.role));
+  for (const b of $$('.side-rail')) b.addEventListener('click', () => set(null));
+  try {
+    const saved = localStorage.getItem(KEY);
+    if (saved === 'tx' || saved === 'rx') studio.dataset.hide = saved;
+  } catch {
+    /* mostra os dois */
+  }
+}
+initSideHiding();
+resizeAll();
+
+// Alças para mudar a altura do painel "Mensagens" e do Monitor Serial.
+// A altura escolhida fica guardada; dois cliques voltam ao padrão.
+function initResizeHandles() {
+  for (const handle of $$('.resize-handle')) {
+    const target = $(handle.dataset.resize);
+    const key = `rc.altura.${handle.dataset.resize}`;
+    const resetHeight = () => {
+      target.style.height = '';
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* nada a fazer */
+      }
+      resizeAll();
+    };
+    try {
+      const saved = Number(localStorage.getItem(key));
+      if (saved) target.style.height = `${saved}px`;
+    } catch {
+      /* sem armazenamento: usa a altura padrão */
+    }
+
+    handle.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      const startY = e.clientY;
+      const startH = target.getBoundingClientRect().height;
+      const maxH = () => window.innerHeight * 0.75;
+      let frame = 0;
+      handle.classList.add('dragging');
+      document.body.classList.add('resizing');
+
+      const move = (ev) => {
+        const h = Math.round(Math.min(maxH(), Math.max(60, startH + (startY - ev.clientY))));
+        target.style.height = `${h}px`;
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(resizeAll);
+      };
+      const up = () => {
+        handle.removeEventListener('pointermove', move);
+        handle.removeEventListener('pointerup', up);
+        handle.removeEventListener('pointercancel', up);
+        handle.classList.remove('dragging');
+        document.body.classList.remove('resizing');
+        resizeAll();
+        try {
+          localStorage.setItem(key, String(Math.round(target.getBoundingClientRect().height)));
+        } catch {
+          /* sem armazenamento: só não lembra */
+        }
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', up);
+      handle.addEventListener('pointercancel', up);
+    });
+
+    // Dois cliques: volta ao tamanho padrão.
+    handle.addEventListener('dblclick', resetHeight);
+
+  }
+}
+initResizeHandles();
+
+// A barra inteira de "Mensagens" abre/fecha o painel (não só a setinha).
+document.querySelector('.log-head').addEventListener('click', () => {
   const open = $('log').dataset.state !== 'open';
   $('log').dataset.state = open ? 'open' : 'closed';
   $('log-toggle').textContent = (open ? '▼' : '▲') + ' Mensagens';

@@ -135,7 +135,29 @@ const monitor = {
   contents: [
     // Texto só existe aqui (as variáveis guardam apenas números).
     block('rc_print', { VALUE: { shadow: { type: 'text', fields: { TEXT: 'olá!' } } } }),
-    block('rc_print', { VALUE: { shadow: { type: 'math_number', fields: { NUM: 0 } } } }),
+    // Já montado: "mostrar no monitor (juntar "valor: " 0)".
+    block('rc_print', {
+      VALUE: {
+        block: {
+          type: 'rc_join',
+          extraState: { itemCount: 2 },
+          inputs: {
+            ADD0: { shadow: { type: 'text', fields: { TEXT: 'valor: ' } } },
+            ADD1: { shadow: { type: 'math_number', fields: { NUM: 0 } } },
+          },
+        },
+      },
+    }),
+    {
+      kind: 'block',
+      type: 'rc_join',
+      extraState: { itemCount: 2 },
+      inputs: {
+        ADD0: { shadow: { type: 'text', fields: { TEXT: '' } } },
+        ADD1: { shadow: { type: 'text', fields: { TEXT: '' } } },
+      },
+    },
+    block('text'),
   ],
 };
 

@@ -33,7 +33,9 @@
 
   <main class="studio">
     <section class="side" data-role="tx">
+      <button class="side-rail" data-role="tx" title="Mostrar o Controle">🎮 <span>Controle</span></button>
       <header class="side-head">
+        <button class="btn ghost icon side-hide" data-role="tx" title="Esconder o Controle (fica só a paleta e o Carrinho)">⇤</button>
         <span class="side-title">🎮 Controle</span>
         <select class="side-port" data-role="tx" title="Placa do Controle"><option value="">— placa —</option></select>
         <button class="btn side-verify" data-role="tx" title="Só compila, sem gravar">✔️ Verificar</button>
@@ -42,6 +44,8 @@
       <div class="ws" id="ws-tx"></div>
     </section>
 
+    <div class="col-handle" data-col="left" title="Arraste para mudar a largura (dois cliques: padrão)"></div>
+
     <aside class="palette" aria-label="Blocos">
       <div class="palette-cats" id="palette-cats"></div>
       <div class="palette-tools" id="palette-tools" hidden></div>
@@ -49,18 +53,23 @@
       <p class="palette-foot">Arraste os blocos para o 🎮 Controle ou para o 🚗 Carrinho</p>
     </aside>
 
+    <div class="col-handle" data-col="right" title="Arraste para mudar a largura (dois cliques: padrão)"></div>
+
     <section class="side" data-role="rx">
       <header class="side-head">
         <span class="side-title">🚗 Carrinho</span>
         <select class="side-port" data-role="rx" title="Placa do Carrinho"><option value="">— placa —</option></select>
         <button class="btn side-verify" data-role="rx" title="Só compila, sem gravar">✔️ Verificar</button>
         <button class="btn primary side-upload" data-role="rx">⬆️ Gravar</button>
+        <button class="btn ghost icon side-hide" data-role="rx" title="Esconder o Carrinho (fica só o Controle e a paleta)">⇥</button>
       </header>
+      <button class="side-rail" data-role="rx" title="Mostrar o Carrinho">🚗 <span>Carrinho</span></button>
       <div class="ws" id="ws-rx"></div>
     </section>
   </main>
 
   <section class="monitor" id="monitor" hidden>
+    <div class="resize-handle" data-resize="monitor" title="Arraste para mudar a altura (dois cliques: tamanho padrão)"></div>
     <div class="monitor-bar">
       <span>🖥️ Monitor Serial</span>
       <button class="btn" id="btn-release" title="Fecha toda comunicação serial com as placas (inclusive de outros programas)">⏹ Fechar todas as portas</button>
@@ -69,7 +78,8 @@
   </section>
 
   <section class="log" id="log" data-state="closed">
-    <header class="log-head">
+    <div class="resize-handle" data-resize="log-body" title="Arraste para mudar a altura (dois cliques: tamanho padrão)"></div>
+    <header class="log-head" title="Clique para abrir ou fechar as mensagens">
       <button class="log-toggle" id="log-toggle">▲ Mensagens</button>
       <span class="log-summary" id="log-summary"></span>
     </header>
