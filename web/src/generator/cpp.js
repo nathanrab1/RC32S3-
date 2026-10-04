@@ -22,6 +22,7 @@ export const Order = {
 
 const HAT_TYPES = new Set([
   'rc_setup', 'rc_loop', 'rc_every', 'rc_on_message', 'rc_on_channel', 'rc_on_lost', 'rc_on_restored', 'rc_on_button',
+  'rc_link_channel',
 ]);
 
 const SERVO_VARS = { direcao: 'servoDirecao', extra: 'servoExtra' };
@@ -79,7 +80,7 @@ class CppGenerator extends Blockly.CodeGenerator {
 
     const hats = workspace.getTopBlocks(true).filter((b) => HAT_TYPES.has(b.type) && b.isEnabled());
     for (const block of hats) {
-      const body = this.statementToCode(block, 'DO');
+      const body = block.getInput('DO') ? this.statementToCode(block, 'DO') : '';
       switch (block.type) {
         case 'rc_setup':
           setup.push(body);
@@ -109,6 +110,16 @@ class CppGenerator extends Blockly.CodeGenerator {
           const ch = block.getFieldValue('CH');
           const fn = this.funcName_('canal_', ch);
           functions.push(`void ${fn}(float valorRecebido) {\n${body}}`);
+          this.setupPrelude_.push(`RCLink.onChannel(${ch}, ${fn});`);
+          break;
+        }
+        case 'rc_link_channel': {
+          // Igual a "quando receber o canal" com um só bloco dentro.
+          const ch = block.getFieldValue('CH');
+          const [servo, mode] = block.getFieldValue('TARGET').split(':');
+          const call = servo === 'motor' ? `${this.motor_()}.speed(valorRecebido)` : `${this.servo_(servo)}.${mode}(valorRecebido)`;
+          const fn = this.funcName_(`canal_${ch}_`, servo);
+          functions.push(`void ${fn}(float valorRecebido) {\n  ${call};\n}`);
           this.setupPrelude_.push(`RCLink.onChannel(${ch}, ${fn});`);
           break;
         }
@@ -164,8 +175,9 @@ class CppGenerator extends Blockly.CodeGenerator {
     return this.valueToCode(block, name, order) || fallback;
   }
 
-  servo_(block) {
-    const v = SERVO_VARS[block.getFieldValue('SERVO')];
+  // Aceita o bloco (campo SERVO) ou o nome direto ('direcao' / 'extra').
+  servo_(blockOrName) {
+    const v = SERVO_VARS[typeof blockOrName === 'string' ? blockOrName : blockOrName.getFieldValue('SERVO')];
     this.definitions_['servo_' + v] = `RCServo ${v};`;
     return v;
   }
@@ -183,6 +195,13 @@ const g = cpp.forBlock;
 g['rc_radio_begin'] = (b) => `RCLink.begin(${Number(b.getFieldValue('NET')) || 0});\n`;
 g['rc_send_channel'] = (b, gen) =>
   `RCLink.setChannel(${b.getFieldValue('CH')}, ${gen.value_(b, 'VALUE', Order.NONE)});\n`;
+g['rc_send_channels'] = (b, gen) => {
+  let code = '';
+  for (let i = 0; b.getInput('ADD' + i); i++) {
+    code += `RCLink.setChannel(${i + 1}, ${gen.value_(b, 'ADD' + i, Order.NONE)});\n`;
+  }
+  return code;
+};
 g['rc_send_message'] = (b, gen) =>
   `RCLink.sendMessage(${gen.quote_(b.getFieldValue('NAME'))}, ${gen.value_(b, 'VALUE', Order.NONE)});\n`;
 g['rc_channel'] = (b) => [`RCLink.channel(${b.getFieldValue('CH')})`, Order.UNARY_POSTFIX];

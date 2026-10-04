@@ -88,10 +88,11 @@ inicial, baixe um projeto pelo app (💾 Baixar) e substitua esse arquivo.
 | Bloco | O que faz |
 |---|---|
 | ligar rádio na rede **N** | Liga o ESP-NOW em modo Long Range (250 kbps). O número da rede também escolhe o canal Wi-Fi, então turmas com redes diferentes não se atrapalham. |
+| enviar canais (➕/➖) | Vários canais num bloco só, uma linha por canal (1, 2, 3…). Fica no "repetir sempre". |
 | enviar no canal **1–8** | Qualquer número, enviado automaticamente 50× por segundo. Para motor e servo, use de -100 a 100 (eles limitam sozinhos). |
+| canal **N** controla motor/servo | Bloco solto no Carrinho: o valor do canal vai direto para o motor ou servo (posição -100..100 ou ângulo 0..180). |
 | valor do canal **1–8** | Último número recebido (0 quando está sem sinal). |
-| quando receber o canal **1–8** | Evento a cada chegada do canal; o número vem em "valor recebido". |
-| enviar mensagem / quando receber | Eventos com nome (até 15 letras), enviados 3× para garantir a entrega. |
+| quando receber o canal **1–8** | Evento a cada chegada do canal; pegue o número com "valor do canal". |
 | quando perder / quando o sinal voltar | Eventos de conexão (sem pacotes por 0,5 s = sinal perdido). |
 
 **Failsafe automático:** se o sinal cair, o motor vai para o neutro e os servos vão para o centro.

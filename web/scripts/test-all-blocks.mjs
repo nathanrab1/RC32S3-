@@ -84,11 +84,23 @@ for (const [name, toolbox] of [['TX', toolboxTx], ['RX', toolboxRx]]) {
       } else {
         attach(set);
       }
+    } else if (!block.getInput('DO')) {
+      // Bloco solto sem encaixe (ex.: "canal controla"): fica como está.
     } else {
       // Chapéu: põe um bloco dentro para não ficar vazio.
       const print = ws.newBlock('rc_print');
       block.getInput('DO').connection.connect(print.previousConnection);
     }
+  }
+
+  // "valor recebido" saiu da paleta, mas projetos antigos ainda usam.
+  if (name === 'RX') {
+    const chHat = ws.newBlock('rc_on_channel');
+    chHat.setFieldValue('3', 'CH');
+    const set2 = ws.newBlock('variables_set');
+    set2.setFieldValue(v.getId(), 'VAR');
+    set2.getInput('VALUE').connection.connect(ws.newBlock('rc_message_value').outputConnection);
+    chHat.getInput('DO').connection.connect(set2.previousConnection);
   }
 
   const dir = path.join(out, `Todos_${name}`);
@@ -109,7 +121,19 @@ for (const [name, toolbox] of [['TX', toolboxTx], ['RX', toolboxRx]]) {
     failures++;
   }
   writeFileSync(path.join(dir, `Todos_${name}.ino`), code);
+  if (name === 'TX' && !/RCLink\.setChannel\(1, 0\);\n  RCLink\.setChannel\(2, 0\);/.test(code)) {
+    console.error('✖ "enviar canais" não gerou o código esperado');
+    failures++;
+  }
   if (name === 'RX') {
+    const linked =
+      /RCLink\.onChannel\(1, canal_1_motor\);/.test(code) &&
+      /void canal_1_motor\(float valorRecebido\) \{\n  motor\.speed\(valorRecebido\);/.test(code) &&
+      /void canal_2_direcao\(float valorRecebido\) \{\n  servoDirecao\.position\(valorRecebido\);/.test(code);
+    if (!linked) {
+      console.error('✖ "canal controla" não gerou o código esperado');
+      failures++;
+    }
     const ok = /RCLink\.onChannel\(3, canal_3\);/.test(code) && /void canal_3\(float valorRecebido\) \{\n  velocidade = valorRecebido;/.test(code);
     if (!ok) {
       console.error('✖ "quando receber o canal" não gerou o código esperado');

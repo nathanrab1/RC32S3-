@@ -296,23 +296,38 @@ export function initPalette({ catsEl, toolsEl, wsEl, targets, notify }) {
     try {
       ws.clear();
       rolesOf.clear();
-      let y = 12;
+      shown = [];
       for (const item of items) {
         const block = Blockly.serialization.blocks.append(structuredClone(item.state), ws);
         block.setMovable(false);
         block.setDeletable(false);
         block.contextMenu = false;
         rolesOf.set(block.id, item.roles);
-        Blockly.renderManagement.triggerQueuedRenders();
-        if (block.hat) y += 20; // topo arredondado dos chapéus
-        block.moveBy(12, y);
-        y += block.getHeightWidth().height + 16;
+        shown.push(block);
       }
+      layout();
     } finally {
       Blockly.Events.enable();
     }
     ws.scroll(0, 0);
   }
+
+  // Empilha os blocos da vitrine. Roda de novo quando um bloco muda de
+  // tamanho ali mesmo (ex.: ➕/➖ do "enviar canais"), para não sobrepor.
+  let shown = [];
+  function layout() {
+    Blockly.renderManagement.triggerQueuedRenders();
+    let y = 12;
+    for (const block of shown) {
+      if (block.hat) y += 20; // topo arredondado dos chapéus
+      const pos = block.getRelativeToSurfaceXY();
+      block.moveBy(12 - pos.x, y - pos.y);
+      y += block.getHeightWidth().height + 16;
+    }
+  }
+  ws.addChangeListener((e) => {
+    if (e.type === Blockly.Events.BLOCK_CHANGE && e.element === 'mutation') layout();
+  });
 
   // Atualiza a lista de variáveis quando algum lado cria/renomeia/apaga.
   for (const t of Object.values(targets)) {

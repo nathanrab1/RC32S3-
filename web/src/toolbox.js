@@ -14,13 +14,10 @@ const programa = {
   contents: [block('rc_setup'), block('rc_loop'), block('rc_every')],
 };
 
+// Rádio só com canais e conexão. Mensagens, "valor recebido" e "força do
+// sinal" saíram da paleta, mas continuam registrados para abrir projetos antigos.
 const radioComum = [
-  block('rc_radio_begin'),
-  block('rc_send_message', { VALUE: num(1) }),
-  block('rc_on_message'),
-  block('rc_message_value'),
   block('rc_connected'),
-  block('rc_signal'),
   block('rc_on_lost'),
   block('rc_on_restored'),
 ];
@@ -30,9 +27,15 @@ const radioTx = {
   name: 'Rádio',
   colour: COLORS.radio,
   contents: [
-    radioComum[0],
+    block('rc_radio_begin'),
+    {
+      kind: 'block',
+      type: 'rc_send_channels',
+      extraState: { itemCount: 2 },
+      inputs: { ADD0: num(0), ADD1: num(0) },
+    },
     block('rc_send_channel', { VALUE: num(0) }),
-    ...radioComum.slice(1),
+    ...radioComum,
   ],
 };
 
@@ -40,7 +43,14 @@ const radioRx = {
   kind: 'category',
   name: 'Rádio',
   colour: COLORS.radio,
-  contents: [radioComum[0], block('rc_channel'), block('rc_on_channel'), ...radioComum.slice(1)],
+  contents: [
+    block('rc_radio_begin'),
+    block('rc_link_channel', null, { CH: '1', TARGET: 'motor' }),
+    block('rc_link_channel', null, { CH: '2', TARGET: 'direcao:position' }),
+    block('rc_channel'),
+    block('rc_on_channel'),
+    ...radioComum,
+  ],
 };
 
 const controle = {
