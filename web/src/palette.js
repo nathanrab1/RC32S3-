@@ -212,6 +212,22 @@ function registerDropAreas(targets, paletteEl, notify) {
 
 // ------------------------------------------------------------------ Paleta
 
+// A vitrine rola como uma lista: nada de espaço vazio acima do primeiro
+// bloco nem depois do último (o Blockly normal deixa rolar meia tela além).
+class PaletteMetrics extends Blockly.MetricsManager {
+  getScrollMetrics(getWorkspaceCoordinates, cachedViewMetrics, cachedContentMetrics) {
+    const view = cachedViewMetrics || this.getViewMetrics(getWorkspaceCoordinates);
+    const content = cachedContentMetrics || this.getContentMetrics(getWorkspaceCoordinates);
+    const pad = 12 * (getWorkspaceCoordinates ? 1 : this.workspace_.scale);
+    return {
+      top: 0,
+      left: 0,
+      width: view.width,
+      height: Math.max(view.height, content.top + content.height + pad),
+    };
+  }
+}
+
 export function initPalette({ catsEl, toolsEl, wsEl, targets, notify }) {
   registerDropAreas(targets, catsEl.closest('.palette'), notify);
   const categories = buildCategories();
@@ -225,6 +241,7 @@ export function initPalette({ catsEl, toolsEl, wsEl, targets, notify }) {
     sounds: false,
     move: { scrollbars: { horizontal: false, vertical: true }, drag: false, wheel: true },
     zoom: { controls: false, wheel: false, startScale: 0.7 },
+    plugins: { metricsManager: PaletteMetrics },
   });
 
   // -------------------------------------------------- grade de categorias
