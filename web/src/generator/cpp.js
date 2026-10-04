@@ -3,6 +3,7 @@
 // Só os blocos dentro dos "chapéus" (ao ligar, repetir sempre e eventos)
 // geram código; blocos soltos são ignorados.
 import * as Blockly from 'blockly';
+import { receivingEvent } from '../blocks/rc_blocks.js';
 
 export const Order = {
   ATOMIC: 0,
@@ -20,7 +21,7 @@ export const Order = {
 };
 
 const HAT_TYPES = new Set([
-  'rc_setup', 'rc_loop', 'rc_every', 'rc_on_message', 'rc_on_lost', 'rc_on_restored', 'rc_on_button',
+  'rc_setup', 'rc_loop', 'rc_every', 'rc_on_message', 'rc_on_channel', 'rc_on_lost', 'rc_on_restored', 'rc_on_button',
 ]);
 
 const SERVO_VARS = { direcao: 'servoDirecao', extra: 'servoExtra' };
@@ -104,6 +105,13 @@ class CppGenerator extends Blockly.CodeGenerator {
           this.setupPrelude_.push(`RCLink.onMessage(${this.quote_(name)}, ${fn});`);
           break;
         }
+        case 'rc_on_channel': {
+          const ch = block.getFieldValue('CH');
+          const fn = this.funcName_('canal_', ch);
+          functions.push(`void ${fn}(float valorRecebido) {\n${body}}`);
+          this.setupPrelude_.push(`RCLink.onChannel(${ch}, ${fn});`);
+          break;
+        }
         case 'rc_on_lost': {
           const fn = this.funcName_('sinal_perdido', '');
           functions.push(`void ${fn}() {\n${body}}`);
@@ -141,7 +149,7 @@ class CppGenerator extends Blockly.CodeGenerator {
     if (vars.length) parts.push(...vars, '');
     for (const f of functions) parts.push(f, '');
     parts.push(
-      'void setup() {\n  Serial.begin(115200);\n' + indent(this.setupPrelude_) + setup.join('') + '}',
+      'void setup() {\n  rcSerialBegin(115200);\n' + indent(this.setupPrelude_) + setup.join('') + '}',
       '',
       'void loop() {\n  RCLink.update();\n' + indent(this.loopPrelude_) + loop.join('') + '}',
       '',
@@ -178,11 +186,7 @@ g['rc_send_channel'] = (b, gen) =>
 g['rc_send_message'] = (b, gen) =>
   `RCLink.sendMessage(${gen.quote_(b.getFieldValue('NAME'))}, ${gen.value_(b, 'VALUE', Order.NONE)});\n`;
 g['rc_channel'] = (b) => [`RCLink.channel(${b.getFieldValue('CH')})`, Order.UNARY_POSTFIX];
-g['rc_message_value'] = (b) => {
-  let p = b.getSurroundParent();
-  while (p && p.type !== 'rc_on_message') p = p.getSurroundParent();
-  return [p ? 'valorRecebido' : '0', Order.ATOMIC];
-};
+g['rc_message_value'] = (b) => [receivingEvent(b) ? 'valorRecebido' : '0', Order.ATOMIC];
 g['rc_connected'] = () => ['RCLink.connected()', Order.UNARY_POSTFIX];
 g['rc_signal'] = () => ['RCLink.signalStrength()', Order.UNARY_POSTFIX];
 

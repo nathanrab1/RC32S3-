@@ -63,11 +63,19 @@ for (const [name, toolbox] of [['TX', toolboxTx], ['RX', toolboxRx]]) {
       const set = ws.newBlock('variables_set');
       set.setFieldValue(v.getId(), 'VAR');
       set.getInput('VALUE').connection.connect(block.outputConnection);
-      // "valor recebido" precisa estar dentro de "quando receber mensagem".
+      // "valor recebido" precisa estar dentro de "quando receber mensagem/canal".
       if (state.type === 'rc_message_value') {
         const hat = ws.newBlock('rc_on_message');
         hat.setFieldValue('teste', 'NAME');
         hat.getInput('DO').connection.connect(set.previousConnection);
+        if (toolbox === toolboxRx) {
+          const chHat = ws.newBlock('rc_on_channel');
+          chHat.setFieldValue('3', 'CH');
+          const set2 = ws.newBlock('variables_set');
+          set2.setFieldValue(v.getId(), 'VAR');
+          set2.getInput('VALUE').connection.connect(ws.newBlock('rc_message_value').outputConnection);
+          chHat.getInput('DO').connection.connect(set2.previousConnection);
+        }
       } else {
         attach(set);
       }
@@ -80,7 +88,15 @@ for (const [name, toolbox] of [['TX', toolboxTx], ['RX', toolboxRx]]) {
 
   const dir = path.join(out, `Todos_${name}`);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(path.join(dir, `Todos_${name}.ino`), cpp.sketch(ws));
+  const code = cpp.sketch(ws);
+  writeFileSync(path.join(dir, `Todos_${name}.ino`), code);
+  if (name === 'RX') {
+    const ok = /RCLink\.onChannel\(3, canal_3\);/.test(code) && /void canal_3\(float valorRecebido\) \{\n  velocidade = valorRecebido;/.test(code);
+    if (!ok) {
+      console.error('✖ "quando receber o canal" não gerou o código esperado');
+      failures++;
+    }
+  }
   console.log(`✔ ${dir}`);
 }
 process.exit(failures ? 1 : 0);

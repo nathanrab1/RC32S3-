@@ -3,8 +3,17 @@
 Ambiente de programação em blocos para criar um **carrinho de controle remoto** com duas
 **Waveshare ESP32-S3-Zero** que conversam por **ESP-NOW Long Range**.
 
-- Aba **🎮 Controle**: joystick, potenciômetro e botões → envia pelo rádio.
-- Aba **🚗 Carrinho**: recebe pelo rádio → motor (ESC), servo de direção, servo extra e LEDs.
+A tela tem três colunas:
+
+```
+🎮 Controle (esquerda)  |  Blocos (meio)  |  🚗 Carrinho (direita)
+```
+
+- **🎮 Controle:** joystick, potenciômetro e botões, que enviam pelo rádio.
+- **🚗 Carrinho:** recebe pelo rádio e comanda motor (ESC), servo de direção, servo extra e LEDs.
+- **Blocos:** escolha a categoria na grade de cima e arraste o bloco para o lado que quiser. Blocos que só
+  existem num lado (🎮 ou 🚗 na categoria) não entram no outro.
+- Cada lado tem a sua placa, **✔️ Verificar** e **⬆️ Gravar**.
 
 ```
 web/            App Blockly (Vite) — publicado no GitHub Pages
@@ -36,11 +45,24 @@ O indicador no canto superior direito fica **● verde** quando o gravador está
 
 ### 3. Gravar
 
-1. Ligue a placa do controle na USB, escolha a aba **Controle**, selecione a placa e clique em **Gravar**.
-2. Faça o mesmo com a placa do carrinho na aba **Carrinho**.
+1. Ligue as placas na USB. No topo de cada lado, escolha a placa do Controle e a do Carrinho.
+2. Clique em **⬆️ Gravar** em cada lado.
 3. Os dois programas precisam usar o **mesmo número de rede** no bloco "ligar rádio na rede".
 
-## Ligações sugeridas (programas de exemplo)
+## Programa inicial: "olá mundo" do rádio
+
+O projeto novo já vem com um teste que **não precisa de nada ligado nos pinos**:
+
+- **Controle:** envia a mensagem `farol` (valor 1), pisca o LED da placa em amarelo por 50 ms e espera
+  300 ms. Ou seja, uma mensagem a cada ~350 ms.
+- **Carrinho:** a cada `farol` recebida, soma 1 na variável `cont`, mostra `cont` no Monitor Serial e
+  pisca o LED da placa em branco por 50 ms.
+
+Se os dois LEDs piscam juntos, o rádio Long Range está funcionando. Para voltar a esse programa,
+use **☰ → Novo projeto**. Ele fica em `web/src/default-project.rc32s3.json`: para trocar o projeto
+inicial, baixe um projeto pelo app (💾 Baixar) e substitua esse arquivo.
+
+## Ligações sugeridas
 
 | Controle | Pino |
 |---|---|
@@ -66,8 +88,9 @@ O indicador no canto superior direito fica **● verde** quando o gravador está
 | Bloco | O que faz |
 |---|---|
 | ligar rádio na rede **N** | Liga o ESP-NOW em modo Long Range (250 kbps). O número da rede também escolhe o canal Wi-Fi, então turmas com redes diferentes não se atrapalham. |
-| enviar no canal **1–8** | Valor de -100 a 100, enviado automaticamente 50× por segundo. |
-| valor do canal **1–8** | Último valor recebido (0 quando está sem sinal). |
+| enviar no canal **1–8** | Qualquer número, enviado automaticamente 50× por segundo. Para motor e servo, use de -100 a 100 (eles limitam sozinhos). |
+| valor do canal **1–8** | Último número recebido (0 quando está sem sinal). |
+| quando receber o canal **1–8** | Evento a cada chegada do canal; o número vem em "valor recebido". |
 | enviar mensagem / quando receber | Eventos com nome (até 15 letras), enviados 3× para garantir a entrega. |
 | quando perder / quando o sinal voltar | Eventos de conexão (sem pacotes por 0,5 s = sinal perdido). |
 
@@ -89,6 +112,7 @@ pelo manual do fabricante.
 ## Testes
 
 ```sh
-cd web && npm test   # gera C++ com TODOS os blocos e os programas de exemplo em web/generated/
+cd web && npm test       # arquivo de projeto + C++ com TODOS os blocos e os exemplos (em web/generated/)
+cd web && npm run test:e2e   # arrastar blocos no Chrome (precisa do app em http://localhost:3232)
 cd web/generated && for s in */; do arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc --library ../../firmware-lib/RCLink "$s"; done
 ```

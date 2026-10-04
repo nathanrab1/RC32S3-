@@ -9,40 +9,55 @@
 <body>
   <header class="topbar">
     <div class="brand">🚗 <span>RC32S3</span></div>
-
-    <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="tx" role="tab">🎮 Controle</button>
-      <button class="tab" data-tab="rx" role="tab">🚗 Carrinho</button>
-    </nav>
+    <input id="project-name" class="project-name" type="text" value="meu-projeto" spellcheck="false"
+           title="Nome do projeto (usado no arquivo ao baixar)" aria-label="Nome do projeto" />
+    <button class="btn" id="btn-save" title="Baixa um arquivo .json com o Controle E o Carrinho juntos (Cmd/Ctrl+S)">💾 Baixar</button>
+    <button class="btn" id="btn-open" title="Abre um arquivo .json com o Controle e o Carrinho (ou arraste o arquivo para a janela)">📂 Abrir</button>
+    <div class="menu">
+      <button class="btn ghost" id="btn-menu" title="Mais opções">☰</button>
+      <div class="menu-list" id="menu-list" hidden>
+        <button data-action="new">🆕 Novo projeto</button>
+        <hr />
+        <button data-action="release">⏹ Liberar portas USB (fecha toda comunicação serial)</button>
+        <button data-action="download">⬇️ Baixar código C++ (os dois .ino)</button>
+        <button data-action="help">❓ Como instalar o gravador</button>
+      </div>
+    </div>
 
     <div class="actions">
-      <div class="menu">
-        <button class="btn ghost" id="btn-menu">📁 Projeto ▾</button>
-        <div class="menu-list" id="menu-list" hidden>
-          <button data-action="new">🆕 Novo projeto</button>
-          <button data-action="open">📂 Abrir…</button>
-          <button data-action="save">💾 Salvar</button>
-          <hr />
-          <button data-action="release">⏹ Liberar portas USB (fecha toda comunicação serial)</button>
-          <button data-action="download">⬇️ Baixar código desta aba (.ino)</button>
-          <button data-action="help">❓ Como instalar o gravador</button>
-        </div>
-      </div>
-
-      <div class="port">
-        <select id="port-select" title="Porta USB da placa"><option value="">— placa —</option></select>
-        <button class="btn ghost icon" id="btn-refresh" title="Procurar placas">🔄</button>
-      </div>
+      <button class="btn ghost icon" id="btn-refresh" title="Procurar placas">🔄</button>
       <button class="btn" id="btn-monitor" title="Ver o que as placas escrevem no Monitor Serial">🖥️ Monitor</button>
-      <button class="btn" id="btn-verify" title="Só compila, sem gravar">✔️ Verificar</button>
-      <button class="btn primary" id="btn-upload">⬆️ Gravar no <span id="upload-target">Controle</span></button>
       <span class="status" id="server-status" title="Gravador local">● gravador</span>
     </div>
   </header>
 
-  <main class="workspaces">
-    <div class="ws active" id="ws-tx"></div>
-    <div class="ws" id="ws-rx"></div>
+  <main class="studio">
+    <section class="side" data-role="tx">
+      <header class="side-head">
+        <span class="side-title">🎮 Controle</span>
+        <select class="side-port" data-role="tx" title="Placa do Controle"><option value="">— placa —</option></select>
+        <button class="btn side-verify" data-role="tx" title="Só compila, sem gravar">✔️ Verificar</button>
+        <button class="btn primary side-upload" data-role="tx">⬆️ Gravar</button>
+      </header>
+      <div class="ws" id="ws-tx"></div>
+    </section>
+
+    <aside class="palette" aria-label="Blocos">
+      <div class="palette-cats" id="palette-cats"></div>
+      <div class="palette-tools" id="palette-tools" hidden></div>
+      <div class="palette-ws" id="palette-ws"></div>
+      <p class="palette-foot">Arraste os blocos para o 🎮 Controle ou para o 🚗 Carrinho</p>
+    </aside>
+
+    <section class="side" data-role="rx">
+      <header class="side-head">
+        <span class="side-title">🚗 Carrinho</span>
+        <select class="side-port" data-role="rx" title="Placa do Carrinho"><option value="">— placa —</option></select>
+        <button class="btn side-verify" data-role="rx" title="Só compila, sem gravar">✔️ Verificar</button>
+        <button class="btn primary side-upload" data-role="rx">⬆️ Gravar</button>
+      </header>
+      <div class="ws" id="ws-rx"></div>
+    </section>
   </main>
 
   <section class="monitor" id="monitor" hidden>
@@ -77,7 +92,9 @@
     <form method="dialog"><button class="btn primary">Entendi</button></form>
   </dialog>
 
-  <input type="file" id="file-input" accept=".json,.rc.json" hidden />
+  <div class="toast" id="toast" hidden></div>
+  <input type="file" id="file-input" accept=".json,application/json" hidden />
+  <div class="drop-hint" id="drop-hint" hidden>📂 Solte o arquivo para abrir o projeto (Controle + Carrinho)</div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

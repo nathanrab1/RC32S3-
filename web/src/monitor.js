@@ -2,32 +2,13 @@
 // A leitura da porta é feita pelo gravador local (rota /monitor), que pausa
 // o monitor sozinho enquanto grava.
 import { SERVER_URL } from './uploader.js';
+import { boardLabel, roleOfPort, portForRole, onBoardsChange } from './boards.js';
 
 const MAX_CHARS = 200_000;
-const PORT_KEY = 'rc.ports'; // { tx: porta, rx: porta } da última gravação
-
-const ROLE_LABEL = { tx: '🎮 Controle', rx: '🚗 Carrinho' };
 
 let ports = [];
-let roles = loadRoles();
 const columns = [];
 let open = false;
-
-function loadRoles() {
-  try {
-    return JSON.parse(localStorage.getItem(PORT_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function roleOf(port) {
-  return Object.keys(ROLE_LABEL).find((r) => roles[r] === port);
-}
-
-function shortName(port) {
-  return port.replace('/dev/', '').replace('cu.', '');
-}
 
 // ------------------------------------------------------------------ Coluna
 
@@ -105,18 +86,16 @@ function append(col, text) {
 }
 
 function renderTitle(col) {
-  const role = roleOf(col.port);
-  col.title.textContent = col.port ? (role ? ROLE_LABEL[role] : '🔌 ESP32') : '— sem placa —';
-  col.el.dataset.role = role || '';
+  col.title.textContent = col.port ? boardLabel(col.port) : '— sem placa —';
+  col.title.title = col.port;
+  col.el.dataset.role = roleOfPort(col.port) || '';
 }
 
 function renderOptions(col) {
   const options = ['<option value="">— escolha a placa —</option>'];
   const list = ports.some((p) => p.endereco === col.port) || !col.port ? ports : [...ports, { endereco: col.port }];
   for (const p of list) {
-    const role = roleOf(p.endereco);
-    const label = `${shortName(p.endereco)}${role ? ' · ' + ROLE_LABEL[role].slice(3) : ''}`;
-    options.push(`<option value="${p.endereco}">${label}</option>`);
+    options.push(`<option value="${p.endereco}" title="${p.endereco}">${boardLabel(p.endereco)}</option>`);
   }
   col.select.innerHTML = options.join('');
   col.select.value = col.port;
@@ -187,7 +166,7 @@ function setPort(col, port) {
 function autoAssign() {
   const available = ports.map((p) => p.endereco);
   const used = new Set(columns.map((c) => c.port).filter(Boolean));
-  const preferred = [roles.tx, roles.rx];
+  const preferred = [portForRole('tx'), portForRole('rx')];
   columns.forEach((col, i) => {
     if (col.port && available.includes(col.port)) return;
     const pick =
@@ -235,20 +214,13 @@ export function updatePorts(list) {
   if (open) autoAssign();
 }
 
-// Chamado depois de gravar: lembra qual porta é o Controle e qual é o Carrinho.
-export function rememberPort(role, port) {
-  for (const r of Object.keys(roles)) if (roles[r] === port) delete roles[r];
-  roles[role] = port;
-  try {
-    localStorage.setItem(PORT_KEY, JSON.stringify(roles));
-  } catch {
-    /* sem armazenamento: só não lembra entre sessões */
-  }
+// Quando uma placa vira Controle/Carrinho, os nomes do monitor mudam junto.
+onBoardsChange(() =>
   columns.forEach((c) => {
     renderTitle(c);
     renderOptions(c);
-  });
-}
+  }),
+);
 
 // Fecha TODA comunicação serial com as placas (monitores deste app e
 // outros programas, como o Monitor Serial do Arduino IDE).

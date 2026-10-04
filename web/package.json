@@ -7,13 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/test-all-blocks.mjs generated && node scripts/generate-examples.mjs generated"
+    "test": "node scripts/test-project.mjs && node scripts/test-all-blocks.mjs generated && node scripts/generate-examples.mjs generated",
+    "test:e2e": "node scripts/e2e-palette.mjs"
   },
   "dependencies": {
     "blockly": "^13.3.0"
   },
   "devDependencies": {
     "jsdom": "^29.1.1",
+    "puppeteer-core": "^25.12.0",
     "vite": "^8.3.2"
   }
 }

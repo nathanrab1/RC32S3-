@@ -8,7 +8,9 @@ RCLinkClass RCLink;
 
 // ---------------------------------------------------------------- Pacote
 
-enum : uint8_t { PKT_CHANNELS = 1, PKT_MESSAGE = 2, PKT_HEARTBEAT = 3 };
+// PKT_CHANNELS (1) é o formato antigo (-100..100 em décimos); quem tem esta
+// versão ainda entende, mas só envia PKT_CHANNELS_F (qualquer número).
+enum : uint8_t { PKT_CHANNELS = 1, PKT_MESSAGE = 2, PKT_HEARTBEAT = 3, PKT_CHANNELS_F = 4 };
 
 struct __attribute__((packed)) PacketHeader {
   uint8_t magic[2];   // 'R', 'C'
@@ -22,6 +24,18 @@ struct __attribute__((packed)) PacketHeader {
 struct __attribute__((packed)) ChannelsPacket {
   PacketHeader h;
   int16_t ch[RC_NUM_CHANNELS];  // -1000..1000 (décimos de %)
+  // Quais canais o remetente usa (bit 0 = canal 1). Fica no fim do pacote:
+  // placas com a versão anterior da biblioteca ignoram este byte, e pacotes
+  // antigos (sem ele) contam como "todos os canais".
+  uint8_t usedMask;
+};
+static const size_t CHANNELS_PACKET_V1_SIZE = sizeof(PacketHeader) + sizeof(int16_t) * RC_NUM_CHANNELS;
+
+// Canais com qualquer número (float), não só -100..100.
+struct __attribute__((packed)) FloatChannelsPacket {
+  PacketHeader h;
+  float ch[RC_NUM_CHANNELS];
+  uint8_t usedMask;  // quais canais o remetente usa (bit 0 = canal 1)
 };
 
 struct __attribute__((packed)) MessagePacket {
@@ -114,15 +128,18 @@ void RCLinkClass::sendRaw(const void *data, size_t len) {
 
 void RCLinkClass::setChannel(uint8_t ch, float percent) {
   if (ch < 1 || ch > RC_NUM_CHANNELS) return;
-  percent = constrain(percent, -100.0f, 100.0f);
-  _txChannels[ch - 1] = (int16_t)lroundf(percent * 10.0f);
+  // Qualquer número. Motor e servo limitam sozinhos em -100..100.
+  if (isnan(percent)) percent = 0;
+  _txChannels[ch - 1] = percent;
   _txChannelsUsed = true;
+  _txUsedMask |= (1 << (ch - 1));
 }
 
 void RCLinkClass::sendChannels() {
-  ChannelsPacket p;
-  fillHeader(p.h, PKT_CHANNELS, _network, _seq++);
+  FloatChannelsPacket p;
+  fillHeader(p.h, PKT_CHANNELS_F, _network, _seq++);
   memcpy(p.ch, _txChannels, sizeof(p.ch));
+  p.usedMask = _txUsedMask;
   sendRaw(&p, sizeof(p));
 }
 
@@ -158,9 +175,15 @@ void RCLinkClass::handlePacket(const uint8_t *data, int len, int rssi) {
   portENTER_CRITICAL(&g_mux);
   _lastPacketAt = millis();
   _rssi = rssi;
-  if (h->type == PKT_CHANNELS && len >= (int)sizeof(ChannelsPacket)) {
+  if (h->type == PKT_CHANNELS && len >= (int)CHANNELS_PACKET_V1_SIZE) {
     const ChannelsPacket *p = (const ChannelsPacket *)data;
+    for (int i = 0; i < RC_NUM_CHANNELS; i++) _rxChannels[i] = p->ch[i] / 10.0f;
+    uint8_t used = len >= (int)sizeof(ChannelsPacket) ? p->usedMask : 0xFF;
+    _rxFreshMask |= used;  // "quando receber o canal" roda no próximo update()
+  } else if (h->type == PKT_CHANNELS_F && len >= (int)sizeof(FloatChannelsPacket)) {
+    const FloatChannelsPacket *p = (const FloatChannelsPacket *)data;
     for (int i = 0; i < RC_NUM_CHANNELS; i++) _rxChannels[i] = p->ch[i];
+    _rxFreshMask |= p->usedMask;
   } else if (h->type == PKT_MESSAGE && len >= (int)sizeof(MessagePacket)) {
     const MessagePacket *p = (const MessagePacket *)data;
     bool repeated = (h->seq == _lastMsgSeq && h->sender == _lastMsgSender);
@@ -230,27 +253,48 @@ void RCLinkClass::update() {
     // Detecção de perda / retorno de sinal.
     uint32_t last = _lastPacketAt;
     bool fresh = last != 0 && (now - last) < RC_TIMEOUT_MS;
+    // O failsafe é aplicado na hora; os eventos do usuário ficam pendentes
+    // até poderem rodar (ver abaixo). Perder e recuperar dentro do mesmo
+    // evento se anulam.
     if (fresh && !_linkUp) {
       _linkUp = true;
       Serial.println("[RCLink] sinal conectado");
-      if (_onRestored) _onRestored();
+      if (_evtLost) _evtLost = false;
+      else _evtRestored = true;
     } else if (!fresh && _linkUp) {
       _linkUp = false;
       for (uint8_t i = 0; i < RC_NUM_CHANNELS; i++) _rxChannels[i] = 0;
       for (uint8_t i = 0; i < _actuatorCount; i++) _actuators[i]->applyFailsafe();
       Serial.println("[RCLink] sinal perdido - failsafe ativado");
-      if (_onLost) _onLost();
+      if (_evtRestored) _evtRestored = false;
+      else _evtLost = true;
     }
-
-    processInbox();
   }
 
+  // Eventos do usuário rodam um de cada vez: se um evento chamar rcWait(),
+  // o rádio continua funcionando, mas outro evento só começa quando este
+  // terminar (sem isso, mensagens rápidas empilhariam eventos até travar).
+  if (_dispatching) return;
+  _dispatching = true;
+  if (_evtLost) {
+    _evtLost = false;
+    if (_onLost) _onLost();
+  }
+  if (_evtRestored) {
+    _evtRestored = false;
+    if (_onRestored) _onRestored();
+  }
+  if (_started) {
+    processInbox();
+    processChannelEvents();
+  }
   pollButtons();
+  _dispatching = false;
 }
 
 float RCLinkClass::channel(uint8_t ch) {
   if (ch < 1 || ch > RC_NUM_CHANNELS || !_linkUp) return 0;
-  return _rxChannels[ch - 1] / 10.0f;
+  return _rxChannels[ch - 1];
 }
 
 bool RCLinkClass::connected() { return _linkUp; }
@@ -259,6 +303,26 @@ int RCLinkClass::signalStrength() {
   if (!_linkUp) return 0;
   // -100 dBm (limite) .. -40 dBm (muito perto) -> 0..100 %
   return constrain(map(_rssi, -100, -40, 0, 100), 0, 100);
+}
+
+void RCLinkClass::onChannel(uint8_t ch, RCMessageHandler fn) {
+  if (ch < 1 || ch > RC_NUM_CHANNELS || _channelHandlerCount >= RC_MAX_HANDLERS) return;
+  _channelHandlers[_channelHandlerCount++] = {ch, fn};
+}
+
+// Canais chegam 50x por segundo. Se um evento demorar, as chegadas não se
+// acumulam: na próxima vez ele roda uma vez só, com o valor mais recente.
+void RCLinkClass::processChannelEvents() {
+  if (_channelHandlerCount == 0) return;
+  portENTER_CRITICAL(&g_mux);
+  uint8_t fresh = _rxFreshMask;
+  _rxFreshMask = 0;
+  portEXIT_CRITICAL(&g_mux);
+  if (!fresh || !_linkUp) return;
+  for (uint8_t i = 0; i < _channelHandlerCount; i++) {
+    const ChannelHandler &h = _channelHandlers[i];
+    if (fresh & (1 << (h.ch - 1))) h.fn(channel(h.ch));
+  }
 }
 
 void RCLinkClass::onMessage(const char *name, RCMessageHandler fn) {
@@ -433,6 +497,19 @@ void rcLedToggle(uint8_t pin) {
 void rcBoardLed(uint8_t r, uint8_t g, uint8_t b) {
   // O WS2812 da ESP32-S3-Zero usa ordem RGB (rgbLedWrite assume GRB).
   rgbLedWriteOrdered(RC_BOARD_LED_PIN, LED_COLOR_ORDER_RGB, r, g, b);
+}
+
+// ---------------------------------------------------------------- Serial
+
+void rcSerialBegin(unsigned long baud) {
+  Serial.begin(baud);
+#if ARDUINO_USB_CDC_ON_BOOT
+  // USB nativa da ESP32-S3: com a placa na USB mas sem nenhum Monitor Serial
+  // lendo, cada Serial.print esperaria até ~2 s por alguém ler, travando o
+  // programa (o LED para de piscar quando o monitor fecha). Com timeout 0, o
+  // texto sem leitor é descartado na hora.
+  Serial.setTxTimeoutMs(0);
+#endif
 }
 
 // ---------------------------------------------------------------- Tempo

@@ -1,5 +1,8 @@
 // Toolboxes do Controle (TX) e do Carrinho (RX), e os programas iniciais.
 import { COLORS } from './blocks/rc_blocks.js';
+// O projeto que abre na primeira vez (e em "Novo projeto"). Para trocar,
+// baixe um projeto pelo app e substitua este arquivo.
+import defaultProject from './default-project.rc32s3.json' with { type: 'json' };
 
 const num = (n) => ({ shadow: { type: 'math_number', fields: { NUM: n } } });
 const block = (type, inputs, fields) => ({ kind: 'block', type, ...(inputs && { inputs }), ...(fields && { fields }) });
@@ -37,7 +40,7 @@ const radioRx = {
   kind: 'category',
   name: 'Rádio',
   colour: COLORS.radio,
-  contents: [radioComum[0], block('rc_channel'), ...radioComum.slice(1)],
+  contents: [radioComum[0], block('rc_channel'), block('rc_on_channel'), ...radioComum.slice(1)],
 };
 
 const controle = {
@@ -148,79 +151,8 @@ export const toolboxRx = {
   contents: [programa, radioRx, carrinho, leds, tempo, sep, logica, lacos, matematica, variaveis, monitor],
 };
 
-// ------------------------------------------------------------------ Programas iniciais
+// ------------------------------------------------------------------ Projeto inicial
 
-const chain = (...blocks) =>
-  blocks.reduceRight((next, b) => (next ? { ...b, next: { block: next } } : b), null);
-
-const shadowNum = (n) => ({ shadow: { type: 'math_number', fields: { NUM: n } } });
-
-export const defaultTx = {
-  blocks: {
-    languageVersion: 0,
-    blocks: [
-      {
-        type: 'rc_setup', x: 30, y: 30,
-        inputs: { DO: { block: chain(
-          { type: 'rc_radio_begin', fields: { NET: 1 } },
-          { type: 'rc_board_led', fields: { COLOR: '0,0,255' } },
-        ) } },
-      },
-      {
-        type: 'rc_loop', x: 30, y: 230,
-        inputs: { DO: { block: chain(
-          { type: 'rc_send_channel', fields: { CH: '1' }, inputs: {
-            VALUE: { ...shadowNum(0), block: { type: 'rc_joystick', fields: { PIN: '1', INV: 'false' } } },
-          } },
-          { type: 'rc_send_channel', fields: { CH: '2' }, inputs: {
-            VALUE: { ...shadowNum(0), block: { type: 'rc_joystick', fields: { PIN: '2', INV: 'false' } } },
-          } },
-        ) } },
-      },
-      {
-        type: 'rc_on_button', x: 30, y: 460, fields: { PIN: '4' },
-        inputs: { DO: { block: { type: 'rc_send_message', fields: { NAME: 'farol' }, inputs: { VALUE: shadowNum(1) } } } },
-      },
-    ],
-  },
-};
-
-export const defaultRx = {
-  blocks: {
-    languageVersion: 0,
-    blocks: [
-      {
-        type: 'rc_setup', x: 30, y: 30,
-        inputs: { DO: { block: chain(
-          { type: 'rc_radio_begin', fields: { NET: 1 } },
-          { type: 'rc_motor_setup', fields: { PIN: '5', KIND: 'true' } },
-          { type: 'rc_servo_setup', fields: { SERVO: 'direcao', PIN: '6', MIN: 45, MAX: 135 } },
-          { type: 'rc_board_led', fields: { COLOR: '255,0,0' } },
-        ) } },
-      },
-      {
-        type: 'rc_loop', x: 30, y: 330,
-        inputs: { DO: { block: chain(
-          { type: 'rc_motor_speed', inputs: {
-            VALUE: { ...shadowNum(0), block: { type: 'rc_channel', fields: { CH: '1' } } },
-          } },
-          { type: 'rc_servo_position', fields: { SERVO: 'direcao' }, inputs: {
-            VALUE: { ...shadowNum(0), block: { type: 'rc_channel', fields: { CH: '2' } } },
-          } },
-        ) } },
-      },
-      {
-        type: 'rc_on_message', x: 760, y: 30, fields: { NAME: 'farol' },
-        inputs: { DO: { block: { type: 'rc_led_toggle', fields: { PIN: '8' } } } },
-      },
-      {
-        type: 'rc_on_lost', x: 760, y: 200,
-        inputs: { DO: { block: { type: 'rc_board_led', fields: { COLOR: '255,0,0' } } } },
-      },
-      {
-        type: 'rc_on_restored', x: 760, y: 370,
-        inputs: { DO: { block: { type: 'rc_board_led', fields: { COLOR: '0,255,0' } } } },
-      },
-    ],
-  },
-};
+export { defaultProject };
+export const defaultTx = defaultProject.controle;
+export const defaultRx = defaultProject.carrinho;

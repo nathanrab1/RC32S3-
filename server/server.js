@@ -6,7 +6,7 @@
 //
 // Rotas:
 //   GET  /status   -> { pronto, arduinoCli, mensagem }
-//   GET  /ports    -> [{ endereco, nome, esp32 }]
+//   GET  /ports    -> [{ endereco, nome, esp32, serial }]
 //   POST /compile  { code }        -> log em texto, termina com "@@RESULTADO ok|erro"
 //   POST /upload   { code, port }  -> idem, compilando e gravando
 //   GET  /monitor?port=...         -> saída do Monitor Serial (fica aberta)
@@ -79,6 +79,8 @@ async function ports() {
         endereco: p.address,
         nome: `${esp32 ? 'ESP32-S3' : 'USB'} — ${p.address.replace('/dev/', '')}`,
         esp32,
+        // Na ESP32-S3 é o endereço MAC: identifica a placa mesmo se a porta mudar.
+        serial: p.properties.serialNumber || p.hardware_id || '',
       };
     });
 }

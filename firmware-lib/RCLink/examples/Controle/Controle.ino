@@ -6,7 +6,7 @@ void botao_farol() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  rcSerialBegin(115200);
   RCLink.begin(1);
   RCLink.onButton(4, botao_farol);
 }

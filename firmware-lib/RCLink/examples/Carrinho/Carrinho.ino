@@ -17,7 +17,7 @@ void sinal_voltou() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  rcSerialBegin(115200);
   RCLink.onMessage("farol", msg_farol);
   RCLink.onSignalLost(sinal_perdido);
   RCLink.onSignalRestored(sinal_voltou);

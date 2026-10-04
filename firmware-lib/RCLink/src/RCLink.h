@@ -8,8 +8,9 @@
 //  - Os dois ESPs usam o mesmo "número da rede" em RCLink.begin(). O canal
 //    Wi-Fi é escolhido a partir desse número, então turmas diferentes podem
 //    usar redes diferentes sem interferir.
-//  - Canais (1..8) carregam valores de -100 a 100 e são enviados 50x por
-//    segundo. Mensagens (nome + valor) são enviadas na hora, com repetição.
+//  - Canais (1..8) carregam qualquer número (para motor/servo use -100 a
+//    100) e são enviados 50x por segundo. Mensagens (nome + valor) são
+//    enviadas na hora, com repetição.
 //  - Failsafe: se nenhum pacote chegar em RC_TIMEOUT_MS, o motor para e os
 //    servos vão para a posição de segurança. Enquanto estiver sem sinal,
 //    os comandos para motor/servos são ignorados.
@@ -80,10 +81,11 @@ public:
   void sendMessage(const char *name, float value);
 
   // Recepção
-  float channel(uint8_t ch);         // -100..100 (0 quando sem sinal)
+  float channel(uint8_t ch);         // último valor recebido (0 quando sem sinal)
   bool connected();
   int signalStrength();              // 0..100 (%), a partir do RSSI
   void onMessage(const char *name, RCMessageHandler fn);
+  void onChannel(uint8_t ch, RCMessageHandler fn);  // a cada chegada do canal (-100..100)
   void onSignalLost(RCEventHandler fn)     { _onLost = fn; }
   void onSignalRestored(RCEventHandler fn) { _onRestored = fn; }
 
@@ -100,6 +102,7 @@ public:
 
 private:
   struct Handler { char name[RC_NAME_LEN]; RCMessageHandler fn; };
+  struct ChannelHandler { uint8_t ch; RCMessageHandler fn; };
   struct Button  { uint8_t pin; bool last; uint32_t changedAt; RCEventHandler fn; };
   struct Pending { char name[RC_NAME_LEN]; float value; uint16_t seq; uint8_t left; };
 
@@ -107,6 +110,7 @@ private:
   void sendChannels();
   void sendHeartbeat();
   void processInbox();
+  void processChannelEvents();
   void pollButtons();
 
   bool _started = false;
@@ -115,8 +119,9 @@ private:
   uint16_t _seq = 0;
 
   // TX
-  int16_t _txChannels[RC_NUM_CHANNELS] = {0};
+  float _txChannels[RC_NUM_CHANNELS] = {0};
   bool _txChannelsUsed = false;
+  uint8_t _txUsedMask = 0;          // canais que este ESP envia
   uint32_t _lastChannelSend = 0;
   uint32_t _lastHeartbeat = 0;
   Pending _pending[8];
@@ -124,7 +129,7 @@ private:
   uint32_t _lastResend = 0;
 
   // RX (escrito pela tarefa Wi-Fi, lido no loop)
-  volatile int16_t _rxChannels[RC_NUM_CHANNELS] = {0};
+  volatile float _rxChannels[RC_NUM_CHANNELS] = {0};
   volatile uint32_t _lastPacketAt = 0;
   volatile int _rssi = -100;
   struct InMsg { char name[RC_NAME_LEN]; float value; };
@@ -135,6 +140,9 @@ private:
 
   Handler _handlers[RC_MAX_HANDLERS];
   uint8_t _handlerCount = 0;
+  ChannelHandler _channelHandlers[RC_MAX_HANDLERS];
+  uint8_t _channelHandlerCount = 0;
+  volatile uint8_t _rxFreshMask = 0;  // canais que chegaram desde o último update()
   Button _buttons[RC_MAX_BUTTONS];
   uint8_t _buttonCount = 0;
   RCActuator *_actuators[RC_MAX_ACTUATORS];
@@ -142,6 +150,9 @@ private:
 
   RCEventHandler _onLost = nullptr;
   RCEventHandler _onRestored = nullptr;
+  bool _dispatching = false;   // um evento do usuário está rodando
+  bool _evtLost = false;
+  bool _evtRestored = false;
 };
 
 extern RCLinkClass RCLink;
@@ -155,4 +166,5 @@ void  rcLed(uint8_t pin, bool on);
 void  rcLedToggle(uint8_t pin);
 void  rcBoardLed(uint8_t r, uint8_t g, uint8_t b);
 void  rcWait(uint32_t ms);                            // espera sem travar o rádio
+void  rcSerialBegin(unsigned long baud = 115200);     // Serial que não trava sem Monitor aberto
 float rcMap(float x, float inMin, float inMax, float outMin, float outMax);

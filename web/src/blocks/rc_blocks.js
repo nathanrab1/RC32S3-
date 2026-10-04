@@ -82,7 +82,7 @@ const definitions = [
     ],
     inputsInline: true,
     colour: COLORS.radio,
-    tooltip: 'Envia um valor de -100 a 100. É repetido 50 vezes por segundo automaticamente.',
+    tooltip: 'Envia um número (para motor e servo, use de -100 a 100). É repetido 50 vezes por segundo automaticamente.',
   }),
   statement({
     type: 'rc_send_message',
@@ -101,7 +101,7 @@ const definitions = [
     args0: [{ type: 'field_dropdown', name: 'CH', options: CHANNELS }],
     output: 'Number',
     colour: COLORS.radio,
-    tooltip: 'Valor recebido no canal, de -100 a 100. Vale 0 quando está sem sinal.',
+    tooltip: 'Último número recebido no canal. Vale 0 quando está sem sinal.',
   },
   hat({
     type: 'rc_on_message',
@@ -110,12 +110,19 @@ const definitions = [
     colour: COLORS.radio,
     tooltip: 'Roda quando chegar uma mensagem com este nome.',
   }),
+  hat({
+    type: 'rc_on_channel',
+    message0: '📶 quando receber o canal %1',
+    args0: [{ type: 'field_dropdown', name: 'CH', options: CHANNELS }],
+    colour: COLORS.radio,
+    tooltip: 'Roda a cada vez que o valor do canal chega (até 50 vezes por segundo). Use "valor recebido" para pegar o número.',
+  }),
   {
     type: 'rc_message_value',
     message0: 'valor recebido',
     output: 'Number',
     colour: COLORS.radio,
-    tooltip: 'O valor da mensagem. Só funciona dentro de "quando receber a mensagem".',
+    tooltip: 'O valor que chegou. Funciona dentro de "quando receber a mensagem" e de "quando receber o canal".',
   },
   {
     type: 'rc_connected',
@@ -320,6 +327,15 @@ const definitions = [
   }),
 ];
 
+export const RECEIVING_EVENTS = ['rc_on_message', 'rc_on_channel'];
+
+// O evento ("quando receber…") que envolve o bloco, se houver.
+export function receivingEvent(block) {
+  let parent = block.getSurroundParent();
+  while (parent && !RECEIVING_EVENTS.includes(parent.type)) parent = parent.getSurroundParent();
+  return parent;
+}
+
 // Nomes de mensagem: até 15 caracteres, sem aspas nem barra invertida.
 function messageNameValidator(text) {
   const clean = text.replace(/["\\]/g, '').slice(0, 15);
@@ -348,11 +364,11 @@ export function registerBlocks() {
     };
   }
 
-  // "valor recebido" só faz sentido dentro de "quando receber a mensagem".
+  // "valor recebido" só faz sentido dentro de um evento que recebe valor.
   Blockly.Blocks['rc_message_value'].onchange = function () {
     if (this.isInFlyout) return;
-    let parent = this.getSurroundParent();
-    while (parent && parent.type !== 'rc_on_message') parent = parent.getSurroundParent();
-    this.setWarningText(parent ? null : 'Use este bloco dentro de "quando receber a mensagem".');
+    this.setWarningText(
+      receivingEvent(this) ? null : 'Use este bloco dentro de "quando receber a mensagem" ou "quando receber o canal".',
+    );
   };
 }
