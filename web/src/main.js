@@ -6,7 +6,9 @@ import { cpp } from './generator/cpp.js';
 import { defaultProject } from './toolbox.js';
 import { getStatus, listPorts, build } from './uploader.js';
 import { initMonitor, toggleMonitor, updatePorts, releaseAll } from './monitor.js';
-import { setPorts, assignRole, portForRole, boardLabel, onBoardsChange } from './boards.js';
+import {
+  ROLE_LABEL, setPorts, assignRole, portForRole, roleOfPort, boardLabel, boardName, boardTag, setBoardName, swapRoles, hasRoles, forgetBoard, onBoardsChange,
+} from './boards.js';
 import { initPalette } from './palette.js';
 import { serializeProject, parseProject, fileSlug, nameFromFile, EXTENSION } from './project.js';
 
@@ -514,7 +516,7 @@ function renderPortSelects() {
   }
   for (const role of Object.keys(ROLES)) {
     const select = portSelect(role);
-    select.innerHTML = '<option value="">— placa —</option>';
+    select.innerHTML = `<option value="">${ROLE_LABEL[role].split(' ')[0]} escolha a placa</option>`;
     for (const p of sortedPorts()) {
       const opt = document.createElement('option');
       opt.value = p.endereco;
@@ -523,13 +525,67 @@ function renderPortSelects() {
       select.append(opt);
     }
     select.value = chosen[role] || '';
-    select.title = chosen[role] ? `${boardLabel(chosen[role])} — ${chosen[role]}` : 'Escolha a placa';
+    select.title = chosen[role] ? `Placa do ${ROLES[role].label}: ${boardLabel(chosen[role])} — ${chosen[role]}` : `Escolha a placa do ${ROLES[role].label}`;
   }
 }
 for (const role of Object.keys(ROLES)) {
   portSelect(role).addEventListener('change', (e) => e.target.value && assignRole(role, e.target.value));
 }
 onBoardsChange(renderPortSelects);
+
+// Menu ⋯ de cada lado: dar nome, trocar Controle ↔ Carrinho, esquecer.
+const boardMenu = (role) => document.querySelector(`.side-board-list[data-role="${role}"]`);
+const closeBoardMenus = () => Object.keys(ROLES).forEach((r) => (boardMenu(r).hidden = true));
+for (const btn of $$('.side-board-btn')) {
+  const role = btn.dataset.role;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = boardMenu(role);
+    const open = menu.hidden;
+    closeBoardMenus();
+    $('menu-list').hidden = true;
+    if (!open) return;
+    const port = portSelect(role).value;
+    const known = Boolean(port && boardTag(port));
+    menu.querySelector('[data-board="rename"]').disabled = !known;
+    menu.querySelector('[data-board="forget"]').disabled = !known || (!roleOfPort(port) && !boardName(port));
+    menu.querySelector('[data-board="swap"]').disabled = !hasRoles();
+    menu.hidden = false;
+  });
+  boardMenu(role).addEventListener('click', (e) => {
+    const item = e.target.closest('[data-board]');
+    if (!item || item.disabled) return;
+    closeBoardMenus();
+    const port = portSelect(role).value;
+    if (item.dataset.board === 'rename') renameBoard(role, port);
+    if (item.dataset.board === 'swap') {
+      swapRoles();
+      toast('⇄ As placas trocaram de lado.');
+    }
+    if (item.dataset.board === 'forget') {
+      const label = boardLabel(port);
+      forgetBoard(port);
+      toast(`🧹 ${label} voltou a ser placa nova.`);
+    }
+  });
+}
+document.addEventListener('click', closeBoardMenus);
+
+function renameBoard(role, port) {
+  const dialog = $('board-name');
+  const input = $('board-name-input');
+  input.value = boardName(port);
+  $('board-name-info').textContent = `Placa ${boardTag(port)} — ligada em ${port.replace('/dev/', '')}. Ela vai ser o ${ROLES[role].label}.`;
+  dialog.returnValue = '';
+  dialog.onclose = () => {
+    if (dialog.returnValue !== 'ok') return;
+    assignRole(role, port); // dar nome por este lado também define o papel
+    setBoardName(port, input.value);
+  };
+  dialog.showModal();
+  input.select();
+}
+$('board-name-cancel').addEventListener('click', () => $('board-name').close());
 
 $('server-status').addEventListener('click', () => $('help').showModal());
 
@@ -566,6 +622,7 @@ $('btn-refresh').addEventListener('click', async () => {
 
 $('btn-menu').addEventListener('click', (e) => {
   e.stopPropagation();
+  closeBoardMenus();
   $('menu-list').hidden = !$('menu-list').hidden;
 });
 document.addEventListener('click', () => ($('menu-list').hidden = true));

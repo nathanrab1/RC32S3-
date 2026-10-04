@@ -36,8 +36,16 @@
       <button class="side-rail" data-role="tx" title="Mostrar o Controle">🎮 <span>Controle</span></button>
       <header class="side-head">
         <button class="btn ghost icon side-hide" data-role="tx" title="Esconder o Controle (fica só a paleta e o Carrinho)">⇤</button>
-        <span class="side-title">🎮 Controle</span>
-        <select class="side-port" data-role="tx" title="Placa do Controle"><option value="">— placa —</option></select>
+        <select class="side-port" data-role="tx" title="Placa do Controle"><option value="">🎮 escolha a placa</option></select>
+        <div class="menu side-board">
+          <button class="btn ghost icon side-board-btn" data-role="tx" title="Opções da placa: dar nome, trocar de lado">⋯</button>
+          <div class="menu-list side-board-list" data-role="tx" hidden>
+            <button data-board="rename">✏️ Dar nome a esta placa…</button>
+            <button data-board="swap">⇄ Trocar com o Carrinho <small>(as placas trocam de lado)</small></button>
+            <hr />
+            <button data-board="forget">🧹 Esquecer esta placa <small>(volta a ser placa nova)</small></button>
+          </div>
+        </div>
         <button class="btn side-verify" data-role="tx" title="Só compila, sem gravar">✔️ Verificar</button>
         <button class="btn primary side-upload" data-role="tx">⬆️ Gravar</button>
       </header>
@@ -57,8 +65,16 @@
 
     <section class="side" data-role="rx">
       <header class="side-head">
-        <span class="side-title">🚗 Carrinho</span>
-        <select class="side-port" data-role="rx" title="Placa do Carrinho"><option value="">— placa —</option></select>
+        <select class="side-port" data-role="rx" title="Placa do Carrinho"><option value="">🚗 escolha a placa</option></select>
+        <div class="menu side-board">
+          <button class="btn ghost icon side-board-btn" data-role="rx" title="Opções da placa: dar nome, trocar de lado">⋯</button>
+          <div class="menu-list side-board-list right" data-role="rx" hidden>
+            <button data-board="rename">✏️ Dar nome a esta placa…</button>
+            <button data-board="swap">⇄ Trocar com o Controle <small>(as placas trocam de lado)</small></button>
+            <hr />
+            <button data-board="forget">🧹 Esquecer esta placa <small>(volta a ser placa nova)</small></button>
+          </div>
+        </div>
         <button class="btn side-verify" data-role="rx" title="Só compila, sem gravar">✔️ Verificar</button>
         <button class="btn primary side-upload" data-role="rx">⬆️ Gravar</button>
         <button class="btn ghost icon side-hide" data-role="rx" title="Esconder o Carrinho (fica só o Controle e a paleta)">⇥</button>
@@ -100,6 +116,21 @@
     <p class="hint">Use o Google Chrome ou o Edge. Se o navegador perguntar se o site pode acessar a rede local, clique em <b>Permitir</b>.</p>
     <p class="hint">Se a placa não aparecer: segure o botão <b>BOOT</b>, aperte e solte <b>RESET</b>, e solte o BOOT.</p>
     <form method="dialog"><button class="btn primary">Entendi</button></form>
+  </dialog>
+
+  <dialog id="board-name">
+    <form method="dialog" class="board-form">
+      <h2>✏️ Nome da placa</h2>
+      <p class="hint" id="board-name-info"></p>
+      <input id="board-name-input" type="text" maxlength="24" autocomplete="off" spellcheck="false"
+             placeholder="Ex.: Azul, Grupo 3, Ana" aria-label="Nome da placa" />
+      <p class="hint">💡 Use um nome que não muda se a placa trocar de lado (cor, grupo, aluno) e escreva
+         o mesmo nome numa etiqueta na placa. Deixe vazio para tirar o nome. Fica salvo neste computador.</p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="board-name-cancel">Cancelar</button>
+        <button class="btn primary" value="ok">Salvar</button>
+      </div>
+    </form>
   </dialog>
 
   <div class="toast" id="toast" hidden></div>

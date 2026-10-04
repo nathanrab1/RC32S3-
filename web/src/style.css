@@ -120,6 +120,10 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 }
 .menu-list button:hover { background: var(--bg); }
 .menu-list hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.menu-list.right { left: auto; right: 0; }
+.side-board-list { min-width: 340px; }
+.menu-list button:disabled { opacity: 0.45; cursor: not-allowed; background: none; }
+.menu-list small { color: var(--muted); }
 
 
 /* ---------------------------------------------------------------- Estúdio: Controle | Blocos | Carrinho */
@@ -203,7 +207,6 @@ body.resizing-cols, body.resizing-cols * { cursor: ew-resize !important; user-se
 }
 .side[data-role="tx"] { --side-color: var(--tab-tx); }
 .side[data-role="rx"] { --side-color: var(--tab-rx); }
-.side-title { font-weight: 700; font-size: 16px; margin-right: auto; white-space: nowrap; }
 .side-port {
   font: inherit;
   font-size: 13px;
@@ -213,9 +216,11 @@ body.resizing-cols, body.resizing-cols * { cursor: ew-resize !important; user-se
   background: var(--panel);
   color: var(--text);
   min-width: 0;
-  max-width: 170px;
+  max-width: 200px;
 }
 .side-head .btn { padding: 6px 10px; font-size: 13px; }
+.side-head .side-board { margin-right: auto; }
+.side-head .side-board-btn { padding: 6px 8px; font-weight: 700; letter-spacing: 1px; }
 .side .ws { flex: 1; min-height: 0; position: relative; }
 .side.drop-ok .ws { outline: 3px dashed var(--side-color); outline-offset: -3px; }
 
@@ -386,6 +391,20 @@ dialog code { background: var(--bg); padding: 2px 6px; border-radius: 4px; }
 dialog .hint { font-size: 14px; color: var(--muted); }
 dialog .ok { color: var(--ok); }
 dialog form { text-align: right; margin-top: 16px; }
+dialog form.board-form { text-align: left; margin-top: 0; }
+.board-form input {
+  font: inherit;
+  font-size: 18px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+}
+.board-form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
 /* ---------------------------------------------------------------- Monitor Serial */
 #btn-monitor.active { background: var(--log-bg); color: var(--log-text); border-color: var(--log-bg); }

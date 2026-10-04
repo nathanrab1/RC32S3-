@@ -49,6 +49,17 @@ O indicador no canto superior direito fica **● verde** quando o gravador está
 2. Clique em **⬆️ Gravar** em cada lado.
 3. Os dois programas precisam usar o **mesmo número de rede** no bloco "ligar rádio na rede".
 
+### Placas na sala de aula
+
+- Placa nunca usada aparece como **🔌 Placa nova (EA:7C)**: o fim do número de série da placa.
+- Ao escolher a placa num lado (ou gravar nela), ela vira **🎮 Controle** ou **🚗 Carrinho**.
+- O botão **⋯** ao lado da placa tem:
+  - **✏️ Dar nome a esta placa** — ex.: "Azul" ou "Grupo 3", que aparece como "🚗 Carrinho · Azul".
+    Use um nome que não muda se a placa trocar de lado e escreva-o numa etiqueta na placa.
+  - **⇄ Trocar com o Controle/Carrinho** — as duas placas trocam de lado num clique.
+  - **🧹 Esquecer esta placa** — volta a ser placa nova (sem lado e sem nome).
+- Os nomes e lados ficam salvos **neste computador** (no navegador).
+
 ## Programa inicial
 
 O projeto novo já vem com um teste de rádio que **só precisa de um servo no Carrinho** (GPIO 3):
