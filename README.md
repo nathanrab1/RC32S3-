@@ -118,8 +118,9 @@ pelo manual do fabricante.
 
 - **A placa não aparece na lista:** segure **BOOT**, aperte e solte **RESET**, solte BOOT e clique em 🔄.
 - **"Porta ocupada":** feche o Monitor Serial ou o Arduino IDE.
-- **As cores do LED da placa estão trocadas:** a ordem de cor muda entre lotes. Ajuste
-  `LED_COLOR_ORDER_RGB` em `firmware-lib/RCLink/src/RCLink.cpp`.
+- **As cores do LED da placa estão trocadas:** a ordem de cor muda entre lotes. O padrão é
+  `LED_COLOR_ORDER_GRB`; se vermelho e verde saírem trocados, use `LED_COLOR_ORDER_RGB` em
+  `firmware-lib/RCLink/src/RCLink.cpp` (função `rcBoardLed`).
 
 ## Testes
 

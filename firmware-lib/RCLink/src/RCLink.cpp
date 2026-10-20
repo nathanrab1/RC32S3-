@@ -540,8 +540,9 @@ void rcLedToggle(uint8_t pin) {
 }
 
 void rcBoardLed(uint8_t r, uint8_t g, uint8_t b) {
-  // O WS2812 da ESP32-S3-Zero usa ordem RGB (rgbLedWrite assume GRB).
-  rgbLedWriteOrdered(RC_BOARD_LED_PIN, LED_COLOR_ORDER_RGB, r, g, b);
+  // A ordem de cor do WS2812 muda entre lotes da ESP32-S3-Zero: as placas
+  // em uso são GRB (com RGB, vermelho e verde saíam trocados).
+  rgbLedWriteOrdered(RC_BOARD_LED_PIN, LED_COLOR_ORDER_GRB, r, g, b);
 }
 
 // ---------------------------------------------------------------- Serial
