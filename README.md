@@ -91,6 +91,9 @@ inicial, baixe um projeto pelo app (💾 Baixar) e substitua esse arquivo.
 | 5V do BEC do ESC | 5V da placa (alimenta o ESP) |
 
 - Alimente o servo pelo **5V do BEC/bateria**, nunca pelo 3V3 da placa.
+- **Vários servos:** o bloco **🦾 servo no pino GPIO N** mexe um servo direto pelo pino, sem
+  "configurar" (ângulo 0..180 ou posição -100..100). Dá para usar até 7 servos (um por pino) além do motor.
+  Os blocos "servo direção/extra" continuam para quem quer limitar o curso (ex.: direção).
 - Analógicos (joystick, potenciômetro): só **GPIO 1 a 10**. O ADC2 não funciona com o rádio ligado.
 - O LED colorido da placa fica no GPIO 21 e é usado pelo bloco "LED da placa".
 

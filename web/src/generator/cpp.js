@@ -221,6 +221,17 @@ g['rc_motor_stop'] = (b, gen) => `${gen.motor_()}.stop();\n`;
 g['rc_servo_setup'] = (b, gen) =>
   `${gen.servo_(b)}.begin(${b.getFieldValue('PIN')}, ${b.getFieldValue('MIN')}, ${b.getFieldValue('MAX')});\n`;
 g['rc_servo_position'] = (b, gen) => `${gen.servo_(b)}.position(${gen.value_(b, 'VALUE', Order.NONE)});\n`;
+// Servo direto no pino: declarado e ligado sozinho no começo do setup().
+g['rc_servo_pin'] = (b, gen) => {
+  const pin = b.getFieldValue('PIN');
+  const v = `servoPino${pin}`;
+  if (!gen.definitions_['servo_pin_' + pin]) {
+    gen.definitions_['servo_pin_' + pin] = `RCServo ${v};`;
+    gen.setupPrelude_.push(`${v}.begin(${pin});`);
+  }
+  const mode = b.getFieldValue('MODE') === 'position' ? 'position' : 'angle';
+  return `${v}.${mode}(${gen.value_(b, 'VALUE', Order.NONE, mode === 'angle' ? '90' : '0')});\n`;
+};
 g['rc_servo_angle'] = (b, gen) => `${gen.servo_(b)}.angle(${gen.value_(b, 'VALUE', Order.NONE, '90')});\n`;
 
 // ------------------------------------------------------------------ LEDs

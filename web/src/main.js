@@ -10,6 +10,7 @@ import {
   ROLE_LABEL, setPorts, assignRole, portForRole, roleOfPort, boardLabel, boardName, boardTag, setBoardName, swapRoles, hasRoles, forgetBoard, onBoardsChange,
 } from './boards.js';
 import { initPalette } from './palette.js';
+import { fillSelect } from './ui.js';
 import { serializeProject, parseProject, fileSlug, nameFromFile, EXTENSION } from './project.js';
 
 Blockly.setLocale(Pt);
@@ -516,15 +517,14 @@ function renderPortSelects() {
   }
   for (const role of Object.keys(ROLES)) {
     const select = portSelect(role);
-    select.innerHTML = `<option value="">${ROLE_LABEL[role].split(' ')[0]} escolha a placa</option>`;
-    for (const p of sortedPorts()) {
-      const opt = document.createElement('option');
-      opt.value = p.endereco;
-      opt.textContent = boardLabel(p.endereco);
-      opt.title = p.endereco;
-      select.append(opt);
-    }
-    select.value = chosen[role] || '';
+    fillSelect(
+      select,
+      [
+        { value: '', label: `${ROLE_LABEL[role].split(' ')[0]} escolha a placa` },
+        ...sortedPorts().map((p) => ({ value: p.endereco, label: boardLabel(p.endereco), title: p.endereco })),
+      ],
+      chosen[role] || '',
+    );
     select.title = chosen[role] ? `Placa do ${ROLES[role].label}: ${boardLabel(chosen[role])} — ${chosen[role]}` : `Escolha a placa do ${ROLES[role].label}`;
   }
 }

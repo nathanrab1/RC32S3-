@@ -2,6 +2,7 @@
 // A leitura da porta é feita pelo gravador local (rota /monitor), que pausa
 // o monitor sozinho enquanto grava.
 import { SERVER_URL } from './uploader.js';
+import { fillSelect } from './ui.js';
 import { boardLabel, roleOfPort, portForRole, onBoardsChange } from './boards.js';
 
 const MAX_CHARS = 200_000;
@@ -92,13 +93,15 @@ function renderTitle(col) {
 }
 
 function renderOptions(col) {
-  const options = ['<option value="">— escolha a placa —</option>'];
   const list = ports.some((p) => p.endereco === col.port) || !col.port ? ports : [...ports, { endereco: col.port }];
-  for (const p of list) {
-    options.push(`<option value="${p.endereco}" title="${p.endereco}">${boardLabel(p.endereco)}</option>`);
-  }
-  col.select.innerHTML = options.join('');
-  col.select.value = col.port;
+  fillSelect(
+    col.select,
+    [
+      { value: '', label: '— escolha a placa —' },
+      ...list.map((p) => ({ value: p.endereco, label: boardLabel(p.endereco), title: p.endereco })),
+    ],
+    col.port || '',
+  );
 }
 
 function renderPower(col) {

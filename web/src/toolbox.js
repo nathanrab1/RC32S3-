@@ -71,6 +71,7 @@ const carrinho = {
     block('rc_servo_setup'),
     block('rc_servo_position', { VALUE: num(0) }),
     block('rc_servo_angle', { VALUE: num(90) }),
+    block('rc_servo_pin', { VALUE: num(90) }, { PIN: '4', MODE: 'angle' }),
   ],
 };
 

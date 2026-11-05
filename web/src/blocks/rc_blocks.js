@@ -266,6 +266,25 @@ const definitions = [
     tooltip: 'Ângulo de 0 a 180 graus (respeitando os limites configurados).',
   }),
 
+  statement({
+    type: 'rc_servo_pin',
+    message0: '🦾 servo no pino %1 %2 %3',
+    args0: [
+      pin('PIN'),
+      {
+        type: 'field_dropdown',
+        name: 'MODE',
+        options: [['ângulo (0 a 180 °)', 'angle'], ['posição (-100 a 100 %)', 'position']],
+      },
+      { type: 'input_value', name: 'VALUE', check: 'Number' },
+    ],
+    inputsInline: true,
+    colour: COLORS.carrinho,
+    tooltip:
+      'Mexe o servo ligado neste pino, sem precisar configurar. Ângulo: de 0 a 180 (90 = centro). ' +
+      'Posição: de -100 a 100 (0 = centro). Sem sinal do rádio, ele volta para o centro.',
+  }),
+
   // ------------------------------------------------------------ LEDs
   statement({
     type: 'rc_led',
@@ -540,6 +559,18 @@ export function registerBlocks() {
       .some((b) => b.isEnabled() && (servo === 'motor' ? b.type === 'rc_motor_setup' : b.type === 'rc_servo_setup' && b.getFieldValue('SERVO') === servo));
     const name = servo === 'motor' ? 'o motor' : `o servo ${servo === 'direcao' ? 'direção' : 'extra'}`;
     this.setWarningText(configured ? null : `Coloque "configurar ${servo === 'motor' ? 'motor' : 'servo'}" no "ao ligar" para ${name} funcionar.`);
+  };
+
+  // "servo no pino" avisa se o pino já é do motor ou de um servo configurado.
+  Blockly.Blocks['rc_servo_pin'].onchange = function () {
+    if (this.isInFlyout) return;
+    const pin = this.getFieldValue('PIN');
+    const other = this.workspace
+      .getAllBlocks(false)
+      .find((b) => b.isEnabled() && ['rc_motor_setup', 'rc_servo_setup'].includes(b.type) && b.getFieldValue('PIN') === pin);
+    this.setWarningText(
+      other ? `O GPIO ${pin} já está em "${other.type === 'rc_motor_setup' ? 'configurar motor' : 'configurar servo'}". Use outro pino.` : null,
+    );
   };
 
   // "valor recebido" só faz sentido dentro de um evento que recebe valor.

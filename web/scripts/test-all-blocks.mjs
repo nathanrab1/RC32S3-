@@ -125,6 +125,10 @@ for (const [name, toolbox] of [['TX', toolboxTx], ['RX', toolboxRx]]) {
     console.error('✖ "enviar canais" não gerou o código esperado');
     failures++;
   }
+  if (name === 'RX' && !(/RCServo servoPino4;/.test(code) && /servoPino4\.begin\(4\);/.test(code) && /servoPino4\.angle\(90\);/.test(code))) {
+    console.error('✖ "servo no pino" não gerou o código esperado');
+    failures++;
+  }
   if (name === 'RX') {
     const linked =
       /RCLink\.onChannel\(1, canal_1_motor\);/.test(code) &&
